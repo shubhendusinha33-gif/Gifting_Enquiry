@@ -5,65 +5,246 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Diwali Gifting Enquiry</title>
 <style>
-:root{--red:#b3122e;--gold:#d4a017;--bg:#fff8ec;--text:#2b2b2b;}
-body{margin:0;font-family:system-ui,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
-.card{background:#fff;border-top:6px solid var(--red);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.1);padding:24px;width:100%;max-width:380px;box-sizing:border-box}
+:root{--red:#b3122e;--gold:#d4a017;--bg:#fff8ec;--text:#2b2b2b;--line:#d9d2c3}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;font-family:system-ui,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:16px}
+.wrap{max-width:560px;margin:0 auto}
+.card{background:#fff;border-top:6px solid var(--red);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.08);padding:20px;margin-bottom:16px}
 h1{font-size:20px;margin:0 0 4px;color:var(--red)}
-.sub{font-size:13px;color:#666;margin-bottom:20px}
-label{display:block;font-size:14px;margin-bottom:6px;font-weight:600}
-input{width:100%;padding:12px;font-size:16px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box;margin-bottom:16px}
-button{width:100%;padding:14px;font-size:16px;background:var(--red);color:#fff;border:0;border-radius:8px;cursor:pointer}
-button:disabled{opacity:.6}
-.msg{font-size:14px;padding:10px;border-radius:8px;margin-bottom:16px;display:none}
-.err{background:#fde8ec;color:#8a0c22;display:block}
-.ok{background:#e8f7ec;color:#1d6b33;display:block}
+h2{font-size:16px;margin:0 0 12px;color:var(--red)}
+.sub{font-size:13px;color:#666;margin-bottom:16px}
+label{display:block;font-size:13px;font-weight:600;margin:10px 0 4px}
+input,select,textarea{width:100%;padding:11px;font-size:16px;border:1px solid #bbb;border-radius:8px;background:#fff}
+.check{display:flex;align-items:center;gap:8px;margin:12px 0;font-size:14px}
+.check input{width:auto}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{padding:13px;font-size:15px;background:var(--red);color:#fff;border:0;border-radius:8px;cursor:pointer;width:100%}
+button.sec{background:#fff;color:var(--red);border:1px solid var(--red)}
+button:disabled{opacity:.6;cursor:not-allowed}
+.link{background:none;color:var(--red);width:auto;padding:0;font-size:13px;text-decoration:underline}
+.btns{display:grid;gap:10px;margin-top:18px}
+.msg{font-size:14px;padding:10px;border-radius:8px;margin-bottom:12px}
+.err{background:#fde8ec;color:#8a0c22}
+.ok{background:#e8f7ec;color:#1d6b33}
+.item{border:1px dashed var(--line);border-radius:10px;padding:12px;margin-bottom:12px}
+.item .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.total{font-size:15px;font-weight:600;margin:12px 0;color:var(--red)}
+.big{font-size:28px;font-weight:700;color:var(--red);margin:8px 0}
+@media (max-width:480px){.grid2{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<div class="card">
-  <h1>Diwali Gifting Enquiry</h1>
-  <div class="sub">Vishal Mega Mart · Store login</div>
-  <div id="msg" class="msg"></div>
-  <form id="loginForm" autocomplete="off">
-    <label for="storeCode">Store code</label>
-    <input id="storeCode" maxlength="10" required autocapitalize="characters">
-    <label for="pin">PIN</label>
-    <input id="pin" type="password" inputmode="numeric" maxlength="6" required>
-    <button id="btn" type="submit">Login</button>
-  </form>
+<div class="wrap">
+
+  <!-- LOGIN -->
+  <div id="loginView" class="card" hidden>
+    <h1>Diwali Gifting Enquiry</h1>
+    <div class="sub">Vishal Mega Mart · Store login</div>
+    <div id="loginMsg" class="msg" hidden></div>
+    <form id="loginForm" autocomplete="off">
+      <label for="storeCode">Store code</label>
+      <input id="storeCode" maxlength="10" required autocapitalize="characters">
+      <label for="pin">PIN</label>
+      <input id="pin" type="password" inputmode="numeric" maxlength="6" required>
+      <div class="btns"><button id="btnLogin" type="submit">Login</button></div>
+    </form>
+  </div>
+
+  <!-- NEW ENQUIRY FORM -->
+  <div id="formView" hidden>
+    <div class="topbar">
+      <div><h1>New Enquiry</h1><div class="sub" id="storeLabel"></div></div>
+      <button class="link" id="btnLogout" type="button">Logout</button>
+    </div>
+    <div id="formMsg" class="msg" hidden></div>
+
+    <form id="enquiryForm" autocomplete="off" novalidate>
+      <div class="card">
+        <h2>A. Store and staff</h2>
+        <label for="capturedBy">Captured by (your name) *</label>
+        <input id="capturedBy" maxlength="60" required>
+        <label for="employeeId">Employee ID</label>
+        <input id="employeeId" maxlength="30">
+      </div>
+
+      <div class="card">
+        <h2>B. Customer</h2>
+        <label for="cName">Customer name *</label>
+        <input id="cName" maxlength="100" required>
+        <label for="cMobile">Mobile number * (10 digits)</label>
+        <input id="cMobile" inputmode="numeric" maxlength="10" required>
+        <label for="cType">Customer type *</label>
+        <select id="cType">
+          <option>Individual</option>
+          <option>Corporate</option>
+          <option>Bulk Buyer</option>
+        </select>
+        <label for="cCompany">Company / organization</label>
+        <input id="cCompany" maxlength="100">
+        <label for="cCity">City</label>
+        <input id="cCity" maxlength="60">
+        <label class="check"><input type="checkbox" id="cConsent"> Customer agreed to receive promotional messages (optional)</label>
+      </div>
+
+      <div class="card">
+        <h2>C. Products</h2>
+        <div id="itemsBox"></div>
+        <button class="sec" id="btnAddProduct" type="button">+ Add another product</button>
+        <div class="total" id="totalPreview"></div>
+      </div>
+
+      <div class="card">
+        <h2>D. Purchase requirements</h2>
+        <label for="expDate">Expected purchase date</label>
+        <input id="expDate" type="date">
+        <label for="intendedUse">Intended use</label>
+        <select id="intendedUse">
+          <option value="">Select</option>
+          <option>Personal</option>
+          <option>Family Gifting</option>
+          <option>Corporate Gifting</option>
+          <option>Employee Gifts</option>
+          <option>Client Gifts</option>
+          <option>Other</option>
+        </select>
+        <label for="budget">Estimated budget range</label>
+        <input id="budget" maxlength="40" placeholder="e.g. ₹10,000 – ₹25,000">
+        <label class="check"><input type="checkbox" id="bulkOrder"> Bulk order</label>
+        <label for="deliveryReq">Delivery requirement</label>
+        <input id="deliveryReq" maxlength="200">
+        <label for="specialReq">Special requirements</label>
+        <textarea id="specialReq" rows="2" maxlength="500"></textarea>
+      </div>
+
+      <div class="card">
+        <h2>E. Follow-up</h2>
+        <label for="followOwner">Follow-up owner</label>
+        <input id="followOwner" maxlength="60">
+        <label for="nextFollow">Next follow-up date</label>
+        <input id="nextFollow" type="date">
+        <label for="priority">Priority</label>
+        <select id="priority">
+          <option>Normal</option>
+          <option>High</option>
+          <option>Urgent</option>
+        </select>
+      </div>
+
+      <div class="btns">
+        <button id="btnSave" type="button">Save Enquiry</button>
+        <button class="sec" id="btnSaveAdd" type="button">Save and Add Another</button>
+        <button class="sec" id="btnCancel" type="button">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- SUCCESS -->
+  <div id="successView" class="card" hidden>
+    <h1>Enquiry saved</h1>
+    <div class="sub">Please note this enquiry number for follow-up.</div>
+    <div class="big" id="savedNo"></div>
+    <div class="btns">
+      <button id="btnNewAfter" type="button">New enquiry</button>
+    </div>
+  </div>
+
 </div>
+
 <script>
-const SUPABASE_URL = "https://hibjphthtkpckbgdqwad.supabase.co";
-const SUPABASE_KEY = "sb_publishable_rtdt7c1Dhs9dAUUHkKWXKw_3CSbh0Hj";
-const msg = document.getElementById("msg");
-const btn = document.getElementById("btn");
-function show(text, type){ msg.textContent = text; msg.className = "msg " + type; }
-document.getElementById("loginForm").addEventListener("submit", async (e) => {
+const SUPA_URL = "https://hibjphthtkpckbgdqwad.supabase.co";
+const SUPA_KEY = "sb_publishable_rtdt7c1Dhs9dAUUHkKWXKw_3CSbh0Hj";
+
+let session = null;   // { token, store_code, store_name }
+let saving = false;
+
+const $ = id => document.getElementById(id);
+
+// ---------- helpers ----------
+async function rpc(fn, body){
+  const res = await fetch(`${SUPA_URL}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: {"Content-Type":"application/json","apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY},
+    body: JSON.stringify(body)
+  });
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch(e) {}
+  if(!res.ok) throw new Error((data && data.message) || "Request failed");
+  return data;
+}
+
+const store = {
+  get(){ try { return JSON.parse(sessionStorage.getItem("vmm_session") || "null"); } catch(e){ return null; } },
+  set(v){ try { sessionStorage.setItem("vmm_session", JSON.stringify(v)); } catch(e){} },
+  clear(){ try { sessionStorage.removeItem("vmm_session"); } catch(e){} }
+};
+
+function showView(id){
+  ["loginView","formView","successView"].forEach(v => $(v).hidden = (v !== id));
+}
+function msg(id, text, type){
+  const el = $(id);
+  el.textContent = text;
+  el.className = "msg " + type;
+  el.hidden = false;
+}
+function clearMsg(id){ $(id).hidden = true; }
+function setBusy(ids, busy){ ids.forEach(id => $(id).disabled = busy); }
+
+// ---------- login ----------
+$("loginForm").addEventListener("submit", async e => {
   e.preventDefault();
-  const code = document.getElementById("storeCode").value.trim().toUpperCase();
-  const pin = document.getElementById("pin").value.trim();
+  clearMsg("loginMsg");
+  const code = $("storeCode").value.trim().toUpperCase();
+  const pin = $("pin").value.trim();
   if(!/^[A-Z0-9]{2,10}$/.test(code) || !/^[0-9]{4,6}$/.test(pin)){
-    show("Enter a valid store code and a 4–6 digit PIN.", "err"); return;
+    msg("loginMsg", "Enter a valid store code and a 4–6 digit PIN.", "err"); return;
   }
-  btn.disabled = true; show("Checking…", "ok");
+  setBusy(["btnLogin"], true);
   try{
-    const res = await fetch(SUPABASE_URL + "/rest/v1/rpc/verify_store_pin", {
-      method: "POST",
-      headers: {"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY},
-      body: JSON.stringify({p_store_code: code, p_pin: pin})
-    });
-    const data = await res.json();
-    if(data.ok){
-      show("Welcome, " + data.store_name + " (" + data.store_code + ")", "ok");
-    } else if(data.error === "locked"){
-      show("Too many wrong attempts. Try again after 15 minutes.", "err");
+    const d = await rpc("store_login", {p_store_code: code, p_pin: pin});
+    if(d && d.ok){
+      session = {token: d.token, store_code: d.store_code, store_name: d.store_name};
+      store.set(session);
+      $("pin").value = "";
+      enterForm();
+    } else if(d && d.error === "locked"){
+      msg("loginMsg", "Too many wrong attempts. Try again after 15 minutes.", "err");
     } else {
-      show("Access denied. Check your store code and PIN.", "err");
+      msg("loginMsg", "Access denied. Check your store code and PIN.", "err");
     }
   }catch(err){
-    show("Network error. Check your connection and try again.", "err");
-  }finally{ btn.disabled = false; }
+    msg("loginMsg", "Network error. Check your connection and try again.", "err");
+  }finally{
+    setBusy(["btnLogin"], false);
+  }
 });
-</script>
-</body>
-</html>
+
+function logout(){
+  session = null;
+  store.clear();
+  $("enquiryForm").reset();
+  $("itemsBox").innerHTML = "";
+  showView("loginView");
+}
+
+$("btnLogout").addEventListener("click", logout);
+
+function enterForm(){
+  $("storeLabel").textContent = session.store_name + " (" + session.store_code + ")";
+  if(!$("itemsBox").children.length) addItem();
+  clearMsg("formMsg");
+  showView("formView");
+  updateTotal();
+}
+
+// ---------- products ----------
+function addItem(){
+  const div = document.createElement("div");
+  div.className = "item";
+  div.innerHTML = `
+    <div class="top"><b>Product</b><button type="button" class="link rm">Remove</button></div>
+    <label>Category *</label>
+    <input
