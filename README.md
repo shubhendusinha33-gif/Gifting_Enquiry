@@ -1,7 +1,14 @@
-# VMM Diwali Gifting Enquiry – App v6 (GitHub Pages + Supabase)
+# VMM Diwali Gifting Enquiry – App v7 (GitHub Pages + Supabase)
 
 Same app, same screens and same roles as v5. Only the database changed: **Firebase Firestore → Supabase (Postgres, Mumbai)**.
-Login is still **code + 6-digit PIN** (default PIN `456987`, forced change on first login, Forgot PIN → Central Ops Admin reset).
+Login is still **code + 6-digit PIN** (default PIN `456987`, forced change on first login).
+
+**New in v7**
+- **Forgot PIN without Admin**: at first login everyone registers a mobile number. Forgot PIN → enter registered mobile + new PIN → logged in. Stores must be within the GPS radius (unless Test mode is ON). Admin reset stays only as a fallback (no registered mobile).
+- **Unknown code**: "Store not in master, please contact Shubhendu Sinha".
+- **Session time-out**: Admin settings › *Log out after no activity (minutes)* and *Longest session (minutes)*. Enforced on the phone and in the database.
+- **Login & PIN log** (Admin › Login & PIN log): every login, wrong PIN, lock, PIN change, mobile registration, Forgot-PIN reset, Admin reset, logout and time-out, with designation and distance from the store. Filter, CSV export, kept 180 days.
+- **Test mode ON** skips the GPS fence for login and Forgot PIN (shown on the login screen and in the log).
 Each store sees only its own data – enforced inside the database, not just in the app.
 
 ## Folder
@@ -35,7 +42,9 @@ The escalation matrix has staff phone numbers, so it must not go into a public r
   store → own store only, AM → own stores, ZFM / HO / Admin → all; enquiry fields that can change after capture are fixed; masters and settings → Admin only.
 - PINs are stored as bcrypt hashes. 5 wrong PINs lock that login for 15 minutes.
 - Login = random session token (valid 30 days); only its SHA-256 hash is stored.
-- **PIN reset / lost phone**: Admin › PIN resets › Reset. The old phone loses access on its next request; the user logs in with `456987` and sets a new PIN.
+- **Forgot PIN**: registered mobile + new PIN. All old phones of that code lose access immediately. 5 wrong mobiles lock Forgot PIN for 30 minutes.
+- **Registered mobiles** are stored only as bcrypt hashes (Admin sees the last 4 digits in the log).
+- **Lost phone / staff left**: Admin › PIN resets › Reset. The old phone loses access on its next request; the registered mobile is cleared, so the next person logs in with `456987` and registers their own mobile.
 - **Never** put the `service_role` / secret key in `index.html` or GitHub.
 
 ### Limits you should know
@@ -43,6 +52,8 @@ The escalation matrix has staff phone numbers, so it must not go into a public r
 - GPS fence is checked in the app, not by the database.
 - Store list, product master, escalation contacts and the code list are readable on the login screen (no customer data).
 - A person trying wrong PINs can lock a code for 15 minutes (Admin can reset).
+- Anyone who knows a store's code, registered mobile and is at the store can reset its PIN – keep the registered mobile with the SM.
+- Logins refused by the GPS fence are stopped on the phone, so they do not appear in the log.
 
 ## Supabase free plan – what to watch
 
@@ -52,7 +63,9 @@ The escalation matrix has staff phone numbers, so it must not go into a public r
 
 ## Testing checklist
 
-1. Wrong PIN refused; default PIN forces a new PIN; Forgot PIN → Admin sees request → Reset → old PIN refused, default works.
+1. Wrong PIN refused; default PIN forces a new PIN + mobile; Forgot PIN with registered mobile → new PIN works, old PIN and old phone refused; wrong mobile refused.
+1a. Unknown code → "Store not in master, please contact Shubhendu Sinha".
+1b. Set idle time-out to 5 min, leave the phone 6 min → next tap logs out with the reason; entry appears in the Login & PIN log.
 2. Store login outside the radius refused; inside works; Test mode skips GPS.
 3. Capture Individual / Corporate / Bulk → HOT tag at ≥20 units or ≥₹25k.
 4. Follow-up, escalate, convert, lost; AM reopens.

@@ -247,9 +247,11 @@ const DB_CONFIG = {
   url: 'https://hibjphthtkpckbgdqwad.supabase.co',
   key: 'sb_publishable_rtdt7c1Dhs9dAUUHkKWXKw_3CSbh0Hj'
 };
-const APP_VERSION = 'v6';
+const APP_VERSION = 'v7';
 const DESIGNATIONS = ['SM', 'ASM', 'DM GM', 'DM FM', 'DM Apps'];
 const DEFAULT_PIN = '456987', LOGIN_DOMAIN = 'vmm-diwali.app';
+const SUPPORT_NAME = 'Shubhendu Sinha';
+const NOT_IN_MASTER = 'Store not in master, please contact ' + SUPPORT_NAME;
 const loginEmail = (code, k) => String(code).toLowerCase() + '.' + String(k || '0').toLowerCase() + '@' + LOGIN_DOMAIN;
 const DEMO = !DB_CONFIG.url;
 const DIWALI_DEFAULT = '2026-11-08';
@@ -320,7 +322,7 @@ const CAT_GROUP_DEFAULT = {
   'Kitchen Appliances': 'CDIT_BRAND', 'Home Appliances': 'CDIT_BRAND', 'Travel': 'TA', 'Utility Bags & Backpacks': 'TA',
   'Gift Vouchers': 'GV', 'Dry Fruits Gift Packs': 'DF', 'Branded Food Gift Packs': 'BFGP'
 };
-const DEFAULT_SETTINGS = { capEnq: 60, capAct: 150, capRefresh: 30, radiusKm: 3, testMode: false, hotQty: 20, hotValue: 25000, l2AfterHours: 2, diwaliDate: '2026-11-08', seasonStart: '2026-10-01',
+const DEFAULT_SETTINGS = { capEnq: 60, capAct: 150, capRefresh: 30, radiusKm: 3, testMode: false, idleMins: 30, sessionMins: 720, hotQty: 20, hotValue: 25000, l2AfterHours: 2, diwaliDate: '2026-11-08', seasonStart: '2026-10-01',
   catalogueUrl: 'https://qr1.be/XCLN', bulkContact: '0124-4555100', adminCodes: [], hoCodes: [], adminUids: [] };
 const OPEN = { 'New': 1, 'Follow-up': 1 };
 const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
@@ -371,12 +373,17 @@ function SupabaseAdapter(cfg) {
       if (e.code === 'permission-denied') e.message = 'Missing or insufficient permissions.';
       throw e;
     }
+    if (data && typeof data === 'object' && !Array.isArray(data) && data.__expired) {   // server ended this session
+      auth = null; saveAuth();
+      const e = new Error(String(data.__expired)); e.code = 'unauthenticated'; throw e;
+    }
     return data;
   };
-  const authErr = r => { r = r || {}; const e = new Error(r.message || (r.code === 'auth/too-many-requests' ? 'Too many attempts' : r.code === 'auth/email-already-in-use' ? 'Login already exists' : 'Wrong PIN')); e.code = r.code || 'auth/unknown'; return e; };
+  const authErr = r => { r = r || {}; const e = new Error(r.message || (r.code === 'auth/too-many-requests' ? 'Too many attempts' : r.code === 'auth/email-already-in-use' ? 'Login already exists' : 'Wrong PIN')); e.code = r.code || 'auth/unknown'; if (r.code === 'unauthenticated') { auth = null; saveAuth(); } return e; };
+  const meta = m => (m ? { desig: m.desig || null, km: typeof m.km === 'number' ? m.km : null, test: !!m.test, ua: String(navigator.userAgent || '').slice(0, 120) } : null);
   const saveAuth = () => { try { if (auth) localStorage.setItem(AK, JSON.stringify(auth)); else localStorage.removeItem(AK); } catch (e) { } };
   const tok = () => (auth ? auth.token : null);
-  const setAuth = r => { auth = { token: r.token, email: r.email, uid: r.uid }; saveAuth(); return auth.uid; };
+  const setAuth = r => { auth = { token: r.token, email: r.email, uid: r.uid, hasRecovery: !!r.hasRecovery }; saveAuth(); return auth.uid; };
   return {
     demo: false,
     async init() {
@@ -384,17 +391,21 @@ function SupabaseAdapter(cfg) {
       if (!anonUid) { anonUid = 'anon-' + uuid(); try { localStorage.setItem('dge_anon_uid', anonUid); } catch (e) { } }
       try { auth = JSON.parse(localStorage.getItem(AK) || 'null'); } catch (e) { auth = null; }
       if (auth && auth.token) {
-        try { const w = await rpc('dge_whoami', { p_token: auth.token }); if (!w || !w.uid) { auth = null; saveAuth(); } else { auth.uid = w.uid; auth.email = w.email; } }
+        try { const w = await rpc('dge_whoami', { p_token: auth.token }); if (!w || !w.uid) { auth = null; saveAuth(); } else { auth.uid = w.uid; auth.email = w.email; auth.hasRecovery = !!w.hasRecovery; saveAuth(); } }
         catch (e) { if (!/network|unavailable/.test(String(e.code || ''))) { auth = null; saveAuth(); } }
       }
       return auth ? auth.uid : anonUid;
     },
     uid: () => (auth ? auth.uid : anonUid),
     authEmail: () => (auth && auth.email) || '',
-    async signIn(email, pw) { const r = await rpc('dge_sign_in', { p_email: email, p_pin: pw }); if (!r || !r.ok) throw authErr(r); return setAuth(r); },
-    async createLogin(email, pw) { const r = await rpc('dge_create_login', { p_email: email, p_pin: pw }); if (!r || !r.ok) throw authErr(r); return setAuth(r); },
+    async signIn(email, pw, m) { const r = await rpc('dge_sign_in', { p_email: email, p_pin: pw, p_meta: meta(m) }); if (!r || !r.ok) throw authErr(r); return setAuth(r); },
+    async createLogin(email, pw, m) { const r = await rpc('dge_create_login', { p_email: email, p_pin: pw, p_meta: meta(m) }); if (!r || !r.ok) throw authErr(r); return setAuth(r); },
     async changePw(pw) { const r = await rpc('dge_change_pin', { p_token: tok(), p_pin: pw }); if (!r || !r.ok) throw authErr(r); },
-    async signOut() { const t = tok(); auth = null; saveAuth(); if (t) rpc('dge_sign_out', { p_token: t }).catch(() => { }); return anonUid; },
+    async setRecovery(mobile) { const r = await rpc('dge_set_recovery', { p_token: tok(), p_mobile: mobile }); if (!r || !r.ok) throw authErr(r); if (auth) { auth.hasRecovery = true; saveAuth(); } },
+    async selfReset(code, mobile, pin, m) { const r = await rpc('dge_self_reset', { p_code: code, p_mobile: mobile, p_pin: pin, p_meta: meta(m) }); if (!r || !r.ok) throw authErr(r); return setAuth(r); },
+    hasRecovery: () => !!(auth && auth.hasRecovery),
+    async authLog(code, event, limit) { return (await rpc('dge_auth_log_list', { p_token: tok(), p_code: code || null, p_event: event || null, p_limit: limit || 300 })) || { rows: [] }; },
+    async signOut(reason) { const t = tok(); auth = null; saveAuth(); if (t) rpc('dge_sign_out', { p_token: t, p_reason: reason || null }).catch(() => { }); return anonUid; },
     async del(col, id) { await rpc('dge_write', { p_token: tok(), p_ops: [{ t: 'del', col, id: String(id) }] }); },
     async get(col, id) { return await rpc('dge_get', { p_token: tok(), p_col: col, p_id: String(id) }); },
     async set(col, id, data, merge) { await rpc('dge_write', { p_token: tok(), p_ops: [{ t: 'set', col, id: String(id), data, merge: !!merge }] }); },
@@ -560,16 +571,34 @@ const SVC = {
   cachedRows() { return this.cache ? Object.values(this.cache.docs) : []; }
 };
 
+/* ---------- session time-out (Admin sets minutes; the database enforces the same limits) ---------- */
+const minsSet = (v, d, lo, hi) => { v = Math.round(Number(v)); return isFinite(v) && v > 0 ? Math.min(Math.max(v, lo), hi) : d; };
+function markAct() { const n = Date.now(); if (n - (markAct.t || 0) > 15000) { markAct.t = n; ls.set('dge_act', n); } }
+function sessionEnded() {
+  if (!SVC.sess || !SVC.settings) return '';
+  const st = SVC.settings, idle = minsSet(st.idleMins, 30, 5, 1440), max = minsSet(st.sessionMins, 720, 30, 43200), now = Date.now();
+  if (now - (Number(SVC.sess.at) || now) > max * 60000) return 'Session time limit reached (' + max + ' min) – please log in again.';
+  const last = Math.max(Number(ls.get('dge_act', 0)) || 0, Number(SVC.sess.at) || 0);
+  if (now - last > idle * 60000) return 'Logged out after ' + idle + ' min with no activity – please log in again.';
+  return '';
+}
+function endSession(msg) {
+  logoutLocal(msg); closeSheet(); vLogin.msg = msg;
+  if (location.hash.indexOf('#/login') === 0) route(); else location.hash = '#/login';
+}
+
 async function api(action, payload) {
   payload = payload || {};
   await SVC.init();
-  const pub = action === 'login' || action === 'forgotPin';
+  const pub = action === 'login' || action === 'forgotPin' || action === 'selfReset';
+  if (!pub && SVC.sess) { const why = sessionEnded(); if (why) { endSession(why); throw uerr(why, 'AUTH'); } }
   if (!pub && SVC.sess && SVC.db.authEmail().split('.')[0].toUpperCase() !== SVC.sess.code) logoutLocal();
   if (!pub && !SVC.sess) { const e = uerr('Please log in again', 'AUTH'); logoutLocal(); location.hash = '#/login'; throw e; }
   const fn = ACT[action];
   if (!fn) throw uerr('Unknown action');
   try { return Object.assign({ ok: true }, await fn(payload)); }
   catch (e) {
+    if (e && e.code === 'unauthenticated') { endSession(e.message || 'Please log in again'); throw uerr(e.message || 'Please log in again', 'AUTH'); }
     if (e && /offline|unavailable|network/i.test(e.message || '')) { const x = uerr('No network. Your entries are safe – try again.', 'NET'); throw x; }
     if (e && /permission|insufficient/i.test(e.message || '')) { console.error(e); throw uerr('Not allowed by database rules. Contact Central Ops.', 'RULES'); }
     throw e;
@@ -595,7 +624,7 @@ const ACT = {
     if (!/^[0-9]{6}$/.test(pin)) throw uerr('PIN must be 6 digits', 'AUTH');
     const setup = !SVC.settingsExists;
     const r = setup ? { role: 'ADMIN', scope: 'ALL', name: 'Admin ' + code } : SVC.resolveCode(code);
-    if (!r) throw uerr('Code not found in store master. Check store code / employee code.', 'AUTH');
+    if (!r) throw uerr(NOT_IN_MASTER, 'AUTH');
     const desig = r.role === 'STORE' ? String(p.desig || '') : '';
     if (r.role === 'STORE' && DESIGNATIONS.indexOf(desig) < 0) throw uerr('Select your designation (SM / ASM / DM GM / DM FM / DM Apps)', 'AUTH');
     let gps = null;
@@ -611,15 +640,16 @@ const ACT = {
     if (SVC.db.authEmail()) SVC.uid = await SVC.db.signOut();
     let u = setup ? null : await SVC.db.get('users', code);
     if (!u && !setup && SVC.db.demo) { await SVC.db.set('users', code, { role: r.role }); u = { role: r.role }; }
-    if (!u && !setup) throw uerr('Login not activated for ' + code + ' yet. Ask Central Ops (Admin must upload the store master / save settings).', 'AUTH');
+    if (!u && !setup) throw uerr('Login not activated for ' + code + ' yet. Please contact ' + SUPPORT_NAME + '.', 'AUTH');
+    const lm = { desig, km: gps ? gps.km : null, test: r.role === 'STORE' && !!SVC.settings.testMode };
     const email = loginEmail(code, u && u.k);
-    try { SVC.uid = await SVC.db.signIn(email, pin); }
+    try { SVC.uid = await SVC.db.signIn(email, pin, lm); }
     catch (e) {
       const c = String(e.code || '');
       if (/too-many-requests/.test(c)) throw uerr('Too many wrong tries. Wait 15 minutes or tap Forgot PIN.', 'AUTH');
       if (/network/.test(c)) throw uerr('No network. Try again.', 'NET');
       if (pin === DEFAULT_PIN && !(u && u.uid)) {
-        try { SVC.uid = await SVC.db.createLogin(email, pin); }
+        try { SVC.uid = await SVC.db.createLogin(email, pin, lm); }
         catch (e2) { if (/email-already-in-use/.test(String(e2.code || ''))) throw uerr('Wrong PIN – this login already has its own PIN. Tap Forgot PIN if nobody knows it.', 'AUTH'); throw e2; }
       } else throw uerr(pin === DEFAULT_PIN ? 'Default PIN no longer works – your PIN was already changed. Tap Forgot PIN.' : 'Wrong PIN. Tap Forgot PIN to get it reset.', 'AUTH');
     }
@@ -629,8 +659,9 @@ const ACT = {
     }
     const adminUser = !!(u && u.role === 'ADMIN');
     if (r.role === 'ADMIN' && !setup && !adminUser && (SVC.settings.adminUids || []).indexOf(SVC.uid) < 0) r.readOnlyAdmin = true;
-    SVC.sess = { code, role: r.role, scope: r.scope, name: r.name, at: Date.now(), gps, readOnlyAdmin: !!r.readOnlyAdmin, adminUser, setup, mustChange: pin === DEFAULT_PIN, desig };
-    ls.set('dge_sess', SVC.sess);
+    SVC.sess = { code, role: r.role, scope: r.scope, name: r.name, at: Date.now(), gps, readOnlyAdmin: !!r.readOnlyAdmin, adminUser, setup, mustChange: pin === DEFAULT_PIN, desig,
+      needRecovery: !!(SVC.db.hasRecovery && !SVC.db.hasRecovery()) };
+    ls.set('dge_sess', SVC.sess); ls.set('dge_act', Date.now());
     return { user: profile() };
   },
   async bootstrap() {
@@ -646,24 +677,79 @@ const ACT = {
   },
   async logout() { SVC.sess = null; ls.del('dge_sess'); SVC.uid = await SVC.db.signOut(); return {}; },
   async changePin(p) {
-    const pin = String(p.pin || '');
-    if (!/^[0-9]{6}$/.test(pin)) throw uerr('PIN must be 6 digits');
-    if (pin === DEFAULT_PIN || /^(\d)\1{5}$/.test(pin) || ['123456', '654321', '012345', '098765'].indexOf(pin) >= 0) throw uerr('Too easy – choose a different 6-digit PIN');
-    try { await SVC.db.changePw(pin); }
-    catch (e) { if (/recent-login/.test(String(e.code || ''))) throw uerr('For safety, log out and log in again, then change the PIN.'); throw e; }
-    if (!SVC.sess.setup) await SVC.db.update('users', SVC.sess.code, { pinSet: true, pinAt: istNowIso() }).catch(() => { });
-    SVC.sess.mustChange = false; ls.set('dge_sess', SVC.sess);
-    return { changed: true };
+    const pin = String(p.pin || ''), wantPin = !p.mobileOnly;
+    let mob = String(p.mobile || '').replace(/\D/g, ''); if (mob.length === 12 && mob.indexOf('91') === 0) mob = mob.slice(2);
+    if (wantPin) {
+      if (!/^[0-9]{6}$/.test(pin)) throw uerr('PIN must be 6 digits');
+      if (pin === DEFAULT_PIN || /^(\d)\1{5}$/.test(pin) || ['123456', '654321', '012345', '098765'].indexOf(pin) >= 0) throw uerr('Too easy – choose a different 6-digit PIN');
+    }
+    if ((mob || SVC.sess.needRecovery) && !/^[6-9]\d{9}$/.test(mob)) throw uerr('Enter your 10-digit mobile number – you need it if you forget the PIN');
+    if (wantPin) {
+      try { await SVC.db.changePw(pin); }
+      catch (e) { if (/recent-login/.test(String(e.code || ''))) throw uerr('For safety, log out and log in again, then change the PIN.'); throw e; }
+      if (!SVC.sess.setup) await SVC.db.update('users', SVC.sess.code, { pinSet: true, pinAt: istNowIso() }).catch(() => { });
+      SVC.sess.mustChange = false; ls.set('dge_sess', SVC.sess);
+    }
+    if (mob && SVC.db.setRecovery) await SVC.db.setRecovery(mob);
+    SVC.sess.needRecovery = false; ls.set('dge_sess', SVC.sess);
+    return { changed: wantPin, mobile: !!mob };
   },
   async forgotPin(p) {
     await SVC.init();
     const code = String(p.code || '').trim().toUpperCase();
     const r = SVC.settingsExists && /^[A-Z0-9_-]{2,30}$/.test(code) ? SVC.resolveCode(code) : null;
-    if (!r) throw uerr('Enter a valid store code / employee code first');
+    if (!code) throw uerr('Type your store code / employee code first');
+    if (!r) throw uerr(NOT_IN_MASTER);
     const st = r.store, amZ = r.role === 'AM' ? (SVC.stores.find(s => s.amCode === code) || {}).zfm : '';
     const doc = { code, role: r.role, name: clip(r.name, 80), amCode: st ? st.amCode : '', zfm: st ? st.zfm : r.role === 'ZFM' ? r.scope : (amZ || ''), at: istNowIso() };
     try { await SVC.db.set('pinResets', code, doc); } catch (e) { throw uerr('Could not send request – try again, or call your AM.'); }
     return { to: 'Central Ops Admin' };
+  },
+  /* Forgot PIN: code + registered mobile + new PIN (stores also pass the GPS fence unless Test mode is ON) */
+  async selfReset(p) {
+    await SVC.init();
+    const code = String(p.code || '').trim().toUpperCase(), pin = String(p.pin || '').trim();
+    if (!code) throw uerr('Type your store code / employee code first');
+    const r = SVC.settingsExists && /^[A-Z0-9_-]{2,30}$/.test(code) ? SVC.resolveCode(code) : null;
+    if (!r) throw uerr(NOT_IN_MASTER);
+    let mobile = String(p.mobile || '').replace(/\D/g, ''); if (mobile.length === 12 && mobile.indexOf('91') === 0) mobile = mobile.slice(2);
+    if (!/^[6-9]\d{9}$/.test(mobile)) throw uerr('Enter your registered 10-digit mobile number');
+    if (!/^[0-9]{6}$/.test(pin)) throw uerr('New PIN must be 6 digits');
+    if (pin === DEFAULT_PIN || /^(\d)\1{5}$/.test(pin) || ['123456', '654321', '012345', '098765'].indexOf(pin) >= 0) throw uerr('Too easy – choose a different 6-digit PIN');
+    const desig = r.role === 'STORE' ? String(p.desig || '') : '';
+    if (r.role === 'STORE' && DESIGNATIONS.indexOf(desig) < 0) throw uerr('Select your designation (SM / ASM / DM GM / DM FM / DM Apps)');
+    let gps = null;
+    if (r.role === 'STORE' && !SVC.settings.testMode) {
+      const s = r.store;
+      if (s.lat && s.lng) {
+        gps = await getGps();
+        const km = kmBetween(gps.lat, gps.lng, s.lat, s.lng);
+        if (km > Number(SVC.settings.radiusKm || 3)) throw uerr('You are ' + km.toFixed(1) + ' km from ' + s.name + '. A store PIN can be reset only within ' + SVC.settings.radiusKm + ' km of the store.', 'GEO');
+        gps.km = Math.round(km * 100) / 100;
+      }
+    }
+    if (!SVC.db.selfReset) throw uerr('Not available in demo mode');
+    if (SVC.db.authEmail()) SVC.uid = await SVC.db.signOut();
+    try { SVC.uid = await SVC.db.selfReset(code, mobile, pin, { desig, km: gps ? gps.km : null, test: r.role === 'STORE' && !!SVC.settings.testMode }); }
+    catch (e) {
+      const c = String(e.code || '');
+      if (/not-in-master/.test(c)) throw uerr(NOT_IN_MASTER);
+      if (/no-recovery/.test(c)) throw uerr('No mobile is registered for ' + code + '. First login? Use the default PIN. Otherwise tap “Ask Central Ops”.');
+      if (/wrong-mobile/.test(c)) throw uerr('This mobile number does not match the one registered for ' + code + '.');
+      if (/too-many/.test(c)) throw uerr('Too many wrong tries. Wait 30 minutes, or tap “Ask Central Ops”.');
+      throw uerr(e.message || 'Could not reset the PIN – try again');
+    }
+    const u = await SVC.db.get('users', code).catch(() => null);
+    const adminUser = !!(u && u.role === 'ADMIN');
+    if (r.role === 'ADMIN' && !adminUser && (SVC.settings.adminUids || []).indexOf(SVC.uid) < 0) r.readOnlyAdmin = true;
+    SVC.sess = { code, role: r.role, scope: r.scope, name: r.name, at: Date.now(), gps, readOnlyAdmin: !!r.readOnlyAdmin, adminUser, setup: false, mustChange: false, needRecovery: false, desig };
+    ls.set('dge_sess', SVC.sess); ls.set('dge_act', Date.now());
+    return { user: profile() };
+  },
+  async authLog(p) {
+    if (SVC.sess.role !== 'ADMIN') throw uerr('Admin only', 'FORBIDDEN');
+    if (!SVC.db.authLog) return { rows: [], registered: 0 };
+    return await SVC.db.authLog(clip(p.code, 30).toUpperCase(), clip(p.event, 30), Math.min(Number(p.limit) || 300, 2000));
   },
   async pinRequests() {
     const s = SVC.sess;
@@ -1102,7 +1188,7 @@ async function adminSave(p) {
   const ver = Date.now();
   if (p.settings) {
     const s = p.settings, cur = SVC.settings;
-    const out = { capEnq: Math.min(500, Math.max(1, Number(s.capEnq) || 60)), capAct: Math.min(1000, Math.max(1, Number(s.capAct) || 150)), capRefresh: Math.min(500, Math.max(5, Number(s.capRefresh) || 30)), radiusKm: Math.min(50, Math.max(0.1, Number(s.radiusKm) || 3)), testMode: !!s.testMode, hotQty: Math.max(1, Number(s.hotQty) || 20), hotValue: Math.max(1, Number(s.hotValue) || 25000),
+    const out = { capEnq: Math.min(500, Math.max(1, Number(s.capEnq) || 60)), capAct: Math.min(1000, Math.max(1, Number(s.capAct) || 150)), capRefresh: Math.min(500, Math.max(5, Number(s.capRefresh) || 30)), radiusKm: Math.min(50, Math.max(0.1, Number(s.radiusKm) || 3)), idleMins: minsSet(s.idleMins, 30, 5, 1440), sessionMins: minsSet(s.sessionMins, 720, 30, 43200), testMode: !!s.testMode, hotQty: Math.max(1, Number(s.hotQty) || 20), hotValue: Math.max(1, Number(s.hotValue) || 25000),
       l2AfterHours: Math.max(1, Number(s.l2AfterHours) || 2), diwaliDate: dateOk(s.diwaliDate, false, 'Diwali date'), seasonStart: dateOk(s.seasonStart, false, 'Season start'),
       bulkContact: clip(s.bulkContact, 30), catalogueUrl: clip(s.catalogueUrl, 200),
       adminCodes: splitCodes(s.adminCodes), hoCodes: splitCodes(s.hoCodes), adminUids: splitCodes(s.adminUids, true), mastersVersion: cur.mastersVersion || 0 };
@@ -1136,7 +1222,7 @@ async function upsertUsers(pairs) {
 }
 function splitCodes(v, keepCase) { return String(v || '').split(/[\s,;]+/).map(x => x.trim()).filter(Boolean).map(x => keepCase ? x : x.toUpperCase()).slice(0, 50); }
 
-function logoutLocal() { if (SVC.db && SVC.db.authEmail && SVC.db.authEmail()) SVC.db.signOut().then(u => SVC.uid = u).catch(() => { }); SVC.sess = null; S.token = null; S.boot = null; S.dash = null; ls.del('dge_sess'); }
+function logoutLocal(reason) { if (SVC.db && SVC.db.authEmail && SVC.db.authEmail()) SVC.db.signOut(reason).then(u => SVC.uid = u).catch(() => { }); SVC.sess = null; S.token = null; S.boot = null; S.dash = null; ls.del('dge_sess'); }
 async function ensureBoot() {
   if (S.boot) return S.boot;
   S.boot = await api('bootstrap');
@@ -1152,8 +1238,8 @@ function route() {
   const q = new URLSearchParams(qs || '');
   window.scrollTo(0, 0);
   if (!S.token && parts[0] !== 'login') { location.hash = '#/login'; return; }
-  if (S.token && SVC.sess && SVC.sess.mustChange && parts[0] !== 'pin' && parts[0] !== 'login') { location.hash = '#/pin'; return; }
-  const v = { login: vLogin, home: vHome, new: vNew, list: vList, enq: vEnq, esc: vEsc, dash: vDash, admin: vAdmin, pin: vPin, pins: vPins }[parts[0]];
+  if (S.token && SVC.sess && (SVC.sess.mustChange || SVC.sess.needRecovery) && parts[0] !== 'pin' && parts[0] !== 'login') { location.hash = '#/pin'; return; }
+  const v = { login: vLogin, home: vHome, new: vNew, list: vList, enq: vEnq, esc: vEsc, dash: vDash, admin: vAdmin, pin: vPin, pins: vPins, logins: vLogins }[parts[0]];
   if (!v) { location.hash = S.token ? (isMgr() ? '#/dash' : '#/home') : '#/login'; return; }
   Promise.resolve(v(parts[1] ? decodeURIComponent(parts[1]) : '', q)).then(() => { if (parts[0] === 'dash') pinBanner(); }).catch(e => { if (e.code !== 'AUTH') { root.innerHTML = '<div class="app"><div class="empty">' + esc(e.message) + '<br><br><a href="#/home">Go home</a></div></div>'; } });
 }
@@ -1192,6 +1278,12 @@ async function vLogin() {
     '<div class="field"><label for="uid">Store code / Employee code</label><input class="in" id="uid" name="username" autocapitalize="characters" autocomplete="username" required style="font-weight:800;text-transform:uppercase;font-size:20px;letter-spacing:1px" placeholder="HJ04"></div>' +
     '<div class="field" id="dsg-f" style="display:none"><label for="dsg">Your designation *</label><select class="in" id="dsg"><option value="">Select…</option>' + DESIGNATIONS.map(d => '<option>' + d + '</option>').join('') + '</select></div>' +
     '<div class="field"><label for="pin" style="display:flex;justify-content:space-between">6-digit PIN <a href="#" id="fpin" style="font-weight:700;color:var(--maroon,#5A0D24)">Forgot PIN?</a></label><input class="in" id="pin" name="password" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="current-password" required style="font-weight:800;font-size:20px;letter-spacing:8px" placeholder="••••••"></div>' +
+    '<div id="fpbox" class="stack" style="display:none;gap:12px">' +
+      '<div class="banner warn"><span><b>Forgot PIN?</b> Enter the mobile number you registered and choose a new PIN. Stores must be at the store (GPS).</span></div>' +
+      '<div class="field"><label for="fpmob">Registered mobile number</label><input class="in" id="fpmob" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="10-digit mobile" style="font-weight:700;font-size:18px;letter-spacing:2px"></div>' +
+      pinIn('fp1', 'New 6-digit PIN') + pinIn('fp2', 'Type it again') +
+      '<button class="btn btn-d w100" type="button" id="fpbtn">Set new PIN &amp; log in</button>' +
+      '<div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:700"><a href="#" id="fpback">← Back to login</a><a href="#" id="fpreq">No registered mobile? Ask Central Ops</a></div></div>' +
     '<p class="ferr" id="lerr" role="alert" style="margin:0">' + esc(msg) + '</p>' +
     '<button class="btn btn-d w100" id="lbtn" type="submit">Enter <span style="color:#F2D18B">→</span></button>' +
     '<span id="lhint" style="font-size:12px;color:var(--muted);text-align:center">Connecting…</span>' +
@@ -1226,11 +1318,35 @@ async function vLogin() {
       location.hash = SVC.sess.mustChange ? '#/pin' : SVC.sess.setup ? '#/admin' : (isMgr() ? '#/dash' : '#/home');
     } catch (x) { $('#lerr').textContent = x.message; $('#pin').value = ''; b.disabled = false; b.innerHTML = 'Enter <span style="color:#F2D18B">→</span>'; }
   };
-  $('#fpin').onclick = async e => {
+  const fpMode = on => {
+    $('#fpbox').style.display = on ? '' : 'none';
+    $('#pin').closest('.field').style.display = on ? 'none' : '';
+    $('#lbtn').style.display = on ? 'none' : '';
+    $('#lerr').textContent = '';
+    if (on) $('#fpmob').focus();
+  };
+  $('#fpin').onclick = e => { e.preventDefault(); fpMode(true); };
+  $('#fpback').onclick = e => { e.preventDefault(); fpMode(false); };
+  $('#fpbtn').onclick = async () => {
+    const code = $('#uid').value.trim().toUpperCase(), mob = $('#fpmob').value.trim(), a = $('#fp1').value.trim(), a2 = $('#fp2').value.trim();
+    if (!code) { $('#lerr').textContent = 'Type your store code / employee code above'; return; }
+    const desig = isStoreCode(code) ? $('#dsg').value : '';
+    if (isStoreCode(code) && !desig) { $('#lerr').textContent = 'Select your designation'; return; }
+    if (!/^[0-9]{6}$/.test(a)) { $('#lerr').textContent = 'New PIN must be exactly 6 digits'; return; }
+    if (a !== a2) { $('#lerr').textContent = 'Both PINs must match'; return; }
+    const b = $('#fpbtn'); b.disabled = true; b.textContent = isStoreCode(code) ? 'Checking your location…' : 'Checking…';
+    try {
+      await api('selfReset', { code, desig, mobile: mob, pin: a });
+      S.token = code; ls.set('dge_uid', code); ls.set('dge_desig', desig);
+      S.boot = null; await ensureBoot(); toast('New PIN set');
+      location.hash = isMgr() ? '#/dash' : '#/home';
+    } catch (x) { $('#lerr').textContent = x.message; b.disabled = false; b.innerHTML = 'Set new PIN &amp; log in'; }
+  };
+  $('#fpreq').onclick = async e => {
     e.preventDefault();
     const code = $('#uid').value.trim().toUpperCase();
-    if (!code) { $('#lerr').textContent = 'Type your store code / employee code above, then tap Forgot PIN'; return; }
-    try { const r = await api('forgotPin', { code }); $('#lerr').innerHTML = '<span style="color:var(--green,#1E7B4A)">PIN reset request sent to ' + esc(r.to) + '. After they reset it, log in with the default PIN and set a new one.</span>'; }
+    if (!code) { $('#lerr').textContent = 'Type your store code / employee code above'; return; }
+    try { const r = await api('forgotPin', { code }); $('#lerr').innerHTML = '<span style="color:var(--green,#1E7B4A)">Request sent to ' + esc(r.to) + '. After they reset it, log in with the default PIN and set a new PIN.</span>'; }
     catch (x) { $('#lerr').textContent = x.message; }
   };
 }
@@ -1281,6 +1397,7 @@ function userMenu() {
   sheet('<div class="stack" style="gap:4px"><b style="font-size:18px" class="serif">' + esc(u.name) + '</b><span class="mu" style="font-size:13px">' + esc(u.userId + ' · ' + u.role + (u.desig ? ' · ' + u.desig : '') + (u.storeCount > 1 ? ' · ' + u.storeCount + ' stores' : '')) + '</span></div>' +
     (u.role === 'ADMIN' ? '<a class="btn btn-o w100" href="#/admin" data-close>Admin settings &amp; masters</a>' : '') +
     (u.role === 'ADMIN' ? '<a class="btn btn-o w100" href="#/pins" data-close>PIN reset requests</a>' : '') +
+    (u.role === 'ADMIN' ? '<a class="btn btn-o w100" href="#/logins" data-close>Login &amp; PIN log</a>' : '') +
     '<a class="btn btn-o w100" href="#/pin" data-close>Change my PIN</a>' +
     '<button class="btn btn-o w100" id="lo" style="color:var(--red)">Log out</button>' + (u.demo ? '<button class="btn btn-o w100" id="dr">Reset demo data</button>' : '') +
     '<span class="tag" style="text-align:center">App ' + APP_VERSION + (u.demo ? ' · demo' : '') + ' · login ' + esc(String(u.deviceUid || '').slice(0, 8)) + '</span>');
@@ -1820,6 +1937,8 @@ async function vAdmin() {
     '<div class="field"><label>Test mode (skip GPS)</label><div class="seg" id="tm" style="align-self:flex-start"><button type="button" data-tm="1" class="' + (st.testMode ? 'on' : '') + '">ON</button><button type="button" data-tm="0" class="' + (!st.testMode ? 'on' : '') + '">OFF</button></div></div></div>' +
     '<div class="g2">' + f('s-ce', 'Cap: new enquiries / store / day', st.capEnq, 'number') + f('s-ca', 'Cap: follow-ups & updates / store / day', st.capAct, 'number') + '</div>' +
     '<div class="g2">' + f('s-cr', 'Cap: data refreshes / phone / day', st.capRefresh, 'number') + '<div class="field"><label>Budget guide</label><span class="mu" style="font-size:12px;line-height:1.4">Caps keep the free Supabase database (500 MB) and download allowance (5 GB/month) safe. Lower caps = less data.</span></div></div>' +
+    '<div class="g2">' + f('s-idle', 'Log out after no activity (minutes)', st.idleMins || 30, 'number', ' min="5" max="1440"') + f('s-max', 'Longest session (minutes)', st.sessionMins || 720, 'number', ' min="30" max="43200"') + '</div>' +
+    '<span class="tag" style="font-size:12px;margin-top:-4px">Applies to every login. Example: 30 = log out after 30 min idle; 720 = log in again after 12 hours even if active.</span>' +
     '<div class="g2">' + f('s-hq', 'Hot lead qty ≥', st.hotQty, 'number') + f('s-hv', 'Hot lead value ₹ ≥', st.hotValue, 'number') + '</div>' +
     '<div class="g2">' + f('s-l2', 'Escalate to L2 after (hours)', st.l2AfterHours, 'number') + f('s-dd', 'Diwali date', st.diwaliDate, 'date') + '</div>' +
     '<div class="g2">' + f('s-ss', 'Season start (reports)', st.seasonStart, 'date') + f('s-bc', 'Bulk orders helpline', st.bulkContact) + '</div>' +
@@ -1829,6 +1948,7 @@ async function vAdmin() {
     '<div class="field"><label for="s-au">Extra Admin account IDs (optional – codes listed above already work)</label><textarea class="in" id="s-au" style="min-height:60px;font-size:13px">' + esc((st.adminUids || []).join('\n')) + '</textarea></div>' +
     '<span class="tag" style="font-size:12px">AM login = AM Code from store master. Zone login = ZFM-&lt;name&gt; (e.g. ZFM-' + esc(String((SVC.stores[0] || {}).zfm || 'HARPREET').replace(/\s+/g, '').toUpperCase()) + ').</span>' +
     '<button class="btn btn-d w100" type="submit"' + (reg ? '' : ' disabled') + '>Save settings</button></form>' +
+    '<div class="card stack" style="gap:8px"><h3>Logins &amp; PINs</h3><span class="mu" style="font-size:13px;line-height:1.5">Every login, wrong PIN, PIN change, Forgot-PIN reset, time-out and Admin reset is recorded. Users reset their own PIN with their registered mobile – Admin reset is only a fallback.</span><div class="g2"><a class="btn btn-o" href="#/logins">Login &amp; PIN log</a><a class="btn btn-o" href="#/pins">PIN reset requests</a></div></div>' +
     '<div class="card stack" style="gap:12px"><h3>Masters</h3>' + Object.keys(MASTER_SPEC).map(k => '<div class="stack" style="gap:6px;border-top:1px solid var(--line);padding-top:10px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b>' + MASTER_SPEC[k].label + '</b><span class="pill ' + (counts[k] ? 'p-conv' : 'p-over') + '">' + counts[k] + ' rows</span></div>' +
       '<span class="tag" style="font-size:12px">' + esc(MASTER_SPEC[k].hint) + '</span><input type="file" accept=".csv,text/csv" data-up="' + k + '"' + (reg ? '' : ' disabled') + ' aria-label="Upload ' + MASTER_SPEC[k].label + '"><span class="tag" id="up-' + k + '"></span></div>').join('') + '</div>' +
     '<div class="card stack" style="gap:6px"><h3>Database usage (Supabase free plan)</h3><span class="mu" style="font-size:13px;line-height:1.5">Free plan: 500 MB database (roughly 1.5–2 lakh enquiries) and 5 GB downloads a month. Phones refresh only changed records, at most every 5 min, and stop at the refresh cap. HO / zone dashboards are cached 10 min (tap ⟳ to force). Check Supabase › Reports › Database size during the season; move to the Pro plan if it gets close to 500 MB.</span></div></div>';
@@ -1838,7 +1958,7 @@ async function vAdmin() {
   $('#setf').onsubmit = async e => {
     e.preventDefault();
     try {
-      await api('adminSave', { settings: { capEnq: $('#s-ce').value, capAct: $('#s-ca').value, capRefresh: $('#s-cr').value, radiusKm: $('#s-rad').value, testMode: tm, hotQty: $('#s-hq').value, hotValue: $('#s-hv').value, l2AfterHours: $('#s-l2').value, diwaliDate: $('#s-dd').value, seasonStart: $('#s-ss').value,
+      await api('adminSave', { settings: { capEnq: $('#s-ce').value, capAct: $('#s-ca').value, capRefresh: $('#s-cr').value, idleMins: $('#s-idle').value, sessionMins: $('#s-max').value, radiusKm: $('#s-rad').value, testMode: tm, hotQty: $('#s-hq').value, hotValue: $('#s-hv').value, l2AfterHours: $('#s-l2').value, diwaliDate: $('#s-dd').value, seasonStart: $('#s-ss').value,
         bulkContact: $('#s-bc').value, catalogueUrl: $('#s-cu').value, adminCodes: $('#s-ac').value, hoCodes: $('#s-ho').value, adminUids: $('#s-au').value } });
       S.boot = null; toast('Settings saved'); route();
     } catch (x) { toast(x.message, true); }
@@ -1865,24 +1985,31 @@ async function vAdmin() {
 const pinIn = (id, label, ac) => '<div class="field"><label for="' + id + '">' + label + '</label><input class="in" id="' + id + '" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="' + (ac || 'new-password') + '" style="font-weight:800;font-size:22px;letter-spacing:8px"></div>';
 async function vPin() {
   if (!SVC.sess) { location.hash = '#/login'; return; }
-  const force = !!SVC.sess.mustChange, back = SVC.sess.role === 'STORE' ? '#/home' : '#/dash';
-  root.innerHTML = '<div class="app" style="max-width:480px;padding-bottom:40px"><div class="hdr"><div class="hrow">' + (force ? '' : '<a class="iconbtn" href="' + back + '" aria-label="Back">' + IC.back + '</a>') +
-    '<div style="display:flex;flex-direction:column"><h1 class="htitle">' + (force ? 'Set your own PIN' : 'Change PIN') + '</h1><span class="hsub">' + esc(SVC.sess.code + ' · ' + SVC.sess.name) + '</span></div></div></div>' +
-    '<form class="card stack" id="pf" style="gap:12px" novalidate>' + (force ? '<div class="banner warn"><span>You used the default PIN. Set your own 6-digit PIN now – share it only with your store team.</span></div>' : '') +
-    pinIn('p1', 'New 6-digit PIN') + pinIn('p2', 'Type it again') +
-    '<span class="tag" style="font-size:12px">Not allowed: ' + DEFAULT_PIN + ', 123456, same digit 6 times.</span>' +
-    '<p class="ferr" id="perr" role="alert" style="margin:0"></p><button class="btn btn-d w100" id="pbtn" type="submit">Save PIN</button>' +
-    (force ? '<button class="btn btn-o w100" type="button" id="plo">Log out</button>' : '') + '</form></div>';
+  const force = !!SVC.sess.mustChange, needMob = !!SVC.sess.needRecovery, mobOnly = needMob && !force, lock = force || needMob;
+  const back = SVC.sess.role === 'STORE' ? '#/home' : '#/dash', canMob = !DEMO;
+  root.innerHTML = '<div class="app" style="max-width:480px;padding-bottom:40px"><div class="hdr"><div class="hrow">' + (lock ? '' : '<a class="iconbtn" href="' + back + '" aria-label="Back">' + IC.back + '</a>') +
+    '<div style="display:flex;flex-direction:column"><h1 class="htitle">' + (force ? 'Set your own PIN' : mobOnly ? 'Register your mobile' : 'Change PIN') + '</h1><span class="hsub">' + esc(SVC.sess.code + ' · ' + SVC.sess.name) + '</span></div></div></div>' +
+    '<form class="card stack" id="pf" style="gap:12px" novalidate>' +
+    (force ? '<div class="banner warn"><span>You used the default PIN. Set your own 6-digit PIN now – share it only with your store team.</span></div>' : '') +
+    (mobOnly ? '<div class="banner warn"><span>Add your mobile number once. If you forget the PIN you can set a new one yourself with this number – no need to call anyone.</span></div>' : '') +
+    (mobOnly ? '' : pinIn('p1', 'New 6-digit PIN') + pinIn('p2', 'Type it again') + '<span class="tag" style="font-size:12px">Not allowed: ' + DEFAULT_PIN + ', 123456, same digit 6 times.</span>') +
+    (canMob ? '<div class="field"><label for="pmob">' + (needMob ? 'Your mobile number * (used for Forgot PIN)' : 'Registered mobile for Forgot PIN (fill only to change it)') + '</label><input class="in" id="pmob" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="10-digit mobile" style="font-weight:700;font-size:18px;letter-spacing:2px"></div>' +
+      '<span class="tag" style="font-size:12px">Stored securely – nobody, including Admin, can read it back.</span>' : '') +
+    '<p class="ferr" id="perr" role="alert" style="margin:0"></p><button class="btn btn-d w100" id="pbtn" type="submit">' + (mobOnly ? 'Save mobile' : 'Save PIN') + '</button>' +
+    (lock ? '<button class="btn btn-o w100" type="button" id="plo">Log out</button>' : '') + '</form></div>';
   if ($('#plo')) $('#plo').onclick = async () => { try { await api('logout'); } catch (e) { } logoutLocal(); location.hash = '#/login'; };
   $('#pf').onsubmit = async e => {
     e.preventDefault();
-    const a = $('#p1').value.trim(), b = $('#p2').value.trim();
-    if (!/^[0-9]{6}$/.test(a)) { $('#perr').textContent = 'PIN must be exactly 6 digits'; return; }
-    if (a !== b) { $('#perr').textContent = 'Both PINs must match'; return; }
+    const a = mobOnly ? '' : $('#p1').value.trim(), b = mobOnly ? '' : $('#p2').value.trim(), mob = $('#pmob') ? $('#pmob').value.trim() : '';
+    if (!mobOnly) {
+      if (!/^[0-9]{6}$/.test(a)) { $('#perr').textContent = 'PIN must be exactly 6 digits'; return; }
+      if (a !== b) { $('#perr').textContent = 'Both PINs must match'; return; }
+    }
+    if ((needMob || mob) && !/^[6-9]\d{9}$/.test(mob.replace(/\D/g, '').slice(-10))) { $('#perr').textContent = 'Enter your 10-digit mobile number'; return; }
     const btn = $('#pbtn'); btn.disabled = true;
     try {
-      await api('changePin', { pin: a });
-      toast('PIN saved'); S.boot = null; await ensureBoot();
+      await api('changePin', { pin: a, mobile: mob, mobileOnly: mobOnly });
+      toast(mobOnly ? 'Mobile registered' : 'PIN saved'); S.boot = null; await ensureBoot();
       location.hash = SVC.sess.setup ? '#/admin' : (isMgr() ? '#/dash' : '#/home');
     } catch (x) { $('#perr').textContent = x.message; btn.disabled = false; }
   };
@@ -1898,12 +2025,49 @@ async function vPins() {
     '<div class="card stack" style="gap:10px"><h3>Requests (' + d.rows.length + ')</h3>' +
     (d.rows.length ? d.rows.map(r => '<div style="display:flex;gap:10px;align-items:center;border-top:1px solid var(--line);padding-top:10px"><div style="flex:1;min-width:0"><b>' + esc(r.code) + '</b> · ' + esc(r.name || '') + '<br><span class="mu" style="font-size:12px">' + esc(r.role) + ' · asked ' + esc(String(r.at || '').replace('T', ' ').slice(0, 16)) + '</span></div><button class="btn btn-d" data-rs="' + esc(r.code) + '">Reset</button></div>').join('') : '<span class="mu">No pending requests.</span>') + '</div>' +
     '<form class="card stack" id="rf" style="gap:10px"><h3>Reset any login in your scope</h3><div class="field"><label for="rc">Store code / employee code</label><input class="in" id="rc" autocapitalize="characters" style="text-transform:uppercase;font-weight:800"></div><button class="btn btn-o w100" type="submit">Reset PIN</button>' +
-    '<span class="tag" style="font-size:12px">After reset the user logs in with the default PIN and must set a new one. Their old PIN stops working immediately.</span></form></div>';
+    '<span class="tag" style="font-size:12px">Fallback only – users normally reset their own PIN with their registered mobile. After an Admin reset the user logs in with the default PIN and sets a new PIN and mobile. Their old PIN stops working immediately.</span><a class="btn btn-o w100" href="#/logins">Open login &amp; PIN log</a></form></div>';
   const go = async code => {
     try { await api('resetPin', { code }); toast(code + ': PIN reset – tell them to use the default PIN'); route(); } catch (x) { toast(x.message, true); }
   };
   $$('[data-rs]').forEach(b => b.onclick = () => go(b.dataset.rs));
   $('#rf').onsubmit = e => { e.preventDefault(); const c = $('#rc').value.trim().toUpperCase(); if (c) go(c); };
+}
+const AUTH_EV = { LOGIN: 'Login', FIRST_LOGIN: 'First login (default PIN)', PIN_CHANGED: 'PIN changed', MOBILE_REGISTERED: 'Mobile registered',
+  PIN_RESET_SELF: 'Forgot PIN – self reset', PIN_REQUEST: 'Asked Central Ops', PIN_RESET_ADMIN: 'Reset by Admin', LOGOUT: 'Logged out', SESSION_END: 'Session ended / timed out' };
+async function vLogins(_, q) {
+  await ensureBoot();
+  const u = S.boot.user;
+  if (u.role !== 'ADMIN') { location.hash = isMgr() ? '#/dash' : '#/home'; return; }
+  loading(true);
+  const code = String(q.get('code') || '').trim().toUpperCase(), ev = AUTH_EV[q.get('event')] ? q.get('event') : '', only = q.get('only') || '';
+  const d = await api('authLog', { code, event: ev, limit: 1000 });
+  let rows = d.rows || [];
+  if (only === 'fail') rows = rows.filter(r => !r.ok);
+  const nameOf = c => { try { const r = SVC.resolveCode(c); return r ? r.name : ''; } catch (e) { return ''; } };
+  const today = todayLocal(), tdy = (d.rows || []).filter(r => String(r.at).slice(0, 10) === today);
+  const cnt = f => tdy.filter(f).length;
+  const chip = (lbl, n, bad) => '<div class="card" style="padding:12px 14px;flex:1;min-width:130px"><span class="mu" style="font-size:12px;font-weight:700">' + lbl + '</span><b style="display:block;font-size:22px' + (bad && n ? ';color:var(--red)' : '') + '">' + n + '</b></div>';
+  const detail = r => esc([r.detail, r.desig, (typeof r.km === 'number' ? r.km + ' km' : ''), (r.test === true ? 'test mode' : '')].filter(Boolean).join(' · '));
+  root.innerHTML = '<div class="app wide" style="max-width:1100px;padding-bottom:40px"><div class="hdr"><div class="hrow"><a class="iconbtn" href="#/admin" aria-label="Back">' + IC.back + '</a><div style="display:flex;flex-direction:column"><h1 class="htitle">Login &amp; PIN log</h1><span class="hsub">Newest first · times in IST · kept 180 days</span></div></div></div>' +
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">' + chip('Logins today', cnt(r => r.event === 'LOGIN' && r.ok) + cnt(r => r.event === 'FIRST_LOGIN')) + chip('Wrong PIN today', cnt(r => r.event === 'LOGIN' && !r.ok), true) +
+      chip('Self PIN resets today', cnt(r => r.event === 'PIN_RESET_SELF' && r.ok)) + chip('Admin resets today', cnt(r => r.event === 'PIN_RESET_ADMIN')) + chip('Mobiles registered', Number(d.registered) || 0) + '</div>' +
+    '<form class="card" id="lgf" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">' +
+      '<div class="field" style="flex:1;min-width:140px"><label for="lg-c">Code</label><input class="in" id="lg-c" value="' + esc(code) + '" autocapitalize="characters" style="text-transform:uppercase" placeholder="All"></div>' +
+      '<div class="field" style="flex:1;min-width:180px"><label for="lg-e">Event</label><select class="in" id="lg-e"><option value="">All events</option>' + Object.keys(AUTH_EV).map(k => '<option value="' + k + '"' + (k === ev ? ' selected' : '') + '>' + AUTH_EV[k] + '</option>').join('') + '</select></div>' +
+      '<label class="check" style="display:flex;gap:6px;align-items:center;font-size:13px;font-weight:700;padding-bottom:12px"><input type="checkbox" id="lg-f"' + (only === 'fail' ? ' checked' : '') + '> Failures only</label>' +
+      '<button class="btn btn-d" type="submit">Apply</button><a class="btn btn-o" href="#/logins">Clear</a><button class="btn btn-o" type="button" id="lg-x">' + IC.dl + ' CSV</button></form>' +
+    (code ? '<div class="banner ' + (d.mobile ? 'hot' : 'warn') + '" style="margin-bottom:12px"><span><b>' + esc(code) + '</b> ' + esc(nameOf(code)) + ' · ' + (d.mobile ? 'registered mobile ends ••' + esc(d.mobile) + ' – can reset own PIN' : 'no registered mobile – needs Admin reset if PIN is forgotten') + '</span></div>' : '') +
+    '<div class="card"><div class="ovx"><table class="tbl"><thead><tr><th>Time</th><th>Code</th><th>Name</th><th>Event</th><th>Result</th><th>Details</th></tr></thead><tbody>' +
+    (rows.length ? rows.map(r => '<tr class="click' + (r.ok ? '' : ' bad') + '" data-c="' + esc(r.code) + '"><td>' + esc(String(r.at).slice(5, 16)) + '</td><td><b>' + esc(r.code) + '</b></td><td>' + esc(nameOf(r.code)) + '</td><td>' + esc(AUTH_EV[r.event] || r.event) + '</td><td>' + (r.ok ? '<span class="pill p-conv">OK</span>' : '<span class="pill p-lost">Failed</span>') + '</td><td style="white-space:normal">' + detail(r) + '</td></tr>').join('')
+      : '<tr><td colspan="6" class="mu" style="text-align:center;padding:24px">No entries</td></tr>') +
+    '</tbody></table></div></div></div>';
+  $('#lgf').onsubmit = e => { e.preventDefault(); const p = new URLSearchParams(); const c = $('#lg-c').value.trim().toUpperCase(); if (c) p.set('code', c); if ($('#lg-e').value) p.set('event', $('#lg-e').value); if ($('#lg-f').checked) p.set('only', 'fail'); location.hash = '#/logins' + (p.toString() ? '?' + p : ''); };
+  $$('tr[data-c]').forEach(tr => tr.onclick = () => { location.hash = '#/logins?code=' + encodeURIComponent(tr.dataset.c); });
+  $('#lg-x').onclick = () => {
+    const ce = v => { v = String(v === undefined || v === null ? '' : v); if (/^[=+\-@]/.test(v)) v = "'" + v; return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    const csv = ['Time,Code,Name,Event,Result,Detail,Designation,KM,TestMode'].concat(rows.map(r => [r.at, r.code, nameOf(r.code), AUTH_EV[r.event] || r.event, r.ok ? 'OK' : 'Failed', r.detail, r.desig, r.km, r.test ? 'Y' : ''].map(ce).join(','))).join('\n');
+    downloadCsv(csv, 'login_pin_log_' + todayLocal() + '.csv');
+  };
 }
 async function pinBanner() {
   try {
@@ -1917,8 +2081,12 @@ async function pinBanner() {
 /* =================== boot =================== */
 (function init() {
   const sv = ls.get('dge_sess', null);
-  const maxAge = sv && sv.role === 'STORE' ? 12 * 3600000 : 7 * 86400000;
+  const maxAge = 30 * 86400000;   // hard cap; Admin minutes are checked once settings load
   if (sv && sv.code && Date.now() - sv.at < maxAge) { SVC.sess = sv; S.token = sv.code; } else ls.del('dge_sess');
+  ['pointerdown', 'keydown', 'touchstart', 'input', 'scroll'].forEach(ev => document.addEventListener(ev, markAct, { passive: true, capture: true }));
+  const chk = () => { if (S.token && SVC.sess) { const w = sessionEnded(); if (w) endSession(w); } };
+  setInterval(chk, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) chk(); });
   if (!location.hash || location.hash === '#/') location.hash = S.token ? '#/home' : '#/login';
   route();
 })();
