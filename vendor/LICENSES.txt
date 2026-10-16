@@ -1,0 +1,5 @@
+Third-party files used only by the snapshot camera (loaded on first use):
+
+html2canvas.min.js  – html2canvas 1.4.1, (c) Niklas von Hertzen, MIT License, https://github.com/niklasvh/html2canvas
+pako_deflate.min.js – pako 1.0.11, (c) Andrei Tuputcyn, Vitaly Puzrin, MIT + Zlib License, https://github.com/nodeca/pako
+UPNG.js             – UPNG.js 2.1.0, (c) 2017 Photopea, MIT License, https://github.com/photopea/UPNG.js

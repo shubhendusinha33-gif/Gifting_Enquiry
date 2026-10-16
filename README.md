@@ -1,9 +1,21 @@
-# VMM Diwali Gifting Enquiry – App v7 (GitHub Pages + Supabase)
+# VMM Diwali Gifting Enquiry – App v8 (GitHub Pages + Supabase)
 
 Same app, same screens and same roles as v5. Only the database changed: **Firebase Firestore → Supabase (Postgres, Mumbai)**.
 Login is still **code + 6-digit PIN** (default PIN `456987`, forced change on first login).
 
-**New in v7**
+**New in v8**
+- **Store login screen shows only "Store code"** (+ designation). AM / ZFM / HO / Admin tap *AM / ZFM / HO login →* to switch to Employee code. A wrong kind of code is refused with a clear message.
+- **Edit with reason**: open enquiries can be edited (customer and products). A reason is required; it shows in the enquiry journey and in **Admin › Edit & delete log** (before → after). The database refuses any customer/product change without a reason.
+- **Delete = Admin only, with reason**: dashboards are corrected, phones drop the enquiry on their next refresh, and the full record is kept in the Edit & delete log. Nobody else can delete (also blocked in the database).
+- **Admin › Sessions**: who is logged in now (code, role, login time, last activity, last save, designation, distance, device) and who logged in today. **Force logout** one phone or every phone of a code.
+- **Time-outs** (Admin settings, minutes): idle logout default **15**; **store no-save logout** default **10** (a store login that saves no enquiry / follow-up for 10 min is logged out; warning banner in the last 2 min; 0 = off); longest session unchanged.
+- **Customer WhatsApp**: ready, editable message to the customer with products, qty and value; product photo attached through the phone's share list. **No links** in any message (customer or buyer).
+- **Buyer escalation**: "Customer asked for discount %" goes into the ready message (with the per-unit price after discount for a single product).
+- **Search / filter on every page**: search on store home, HO dashboard (store code, AM, enquiry ID, mobile) and list; a filter box above every table.
+- **Snapshot camera** on dashboard panels and tables: HD picture squeezed to ≤ 64 KB, copied to the clipboard (paste in WhatsApp Web / mail / Excel), plus Share and Download. Admin chooses who gets it (Admin only / Admin + HO / everyone). Nothing is uploaded.
+- **Lighter login hashing** (bcrypt cost 6) and fewer housekeeping deletes, so a morning login rush costs less database CPU.
+
+**v7**
 - **Forgot PIN without Admin**: at first login everyone registers a mobile number. Forgot PIN → enter registered mobile + new PIN → logged in. Stores must be within the GPS radius (unless Test mode is ON). Admin reset stays only as a fallback (no registered mobile).
 - **Unknown code**: "Store not in master, please contact Shubhendu Sinha".
 - **Session time-out**: Admin settings › *Log out after no activity (minutes)* and *Longest session (minutes)*. Enforced on the phone and in the database.
@@ -19,7 +31,8 @@ Each store sees only its own data – enforced inside the database, not just in 
 | `products/P001–P328.jpg` | One photo per catalogue product (picker, enquiry, WhatsApp). |
 | `catalogue/p03–p45.jpg` | Full catalogue pages (fallback when a product has no own photo). |
 | `vmm-logo.png` | Logo. |
-| `supabase/setup.sql` | Run once in Supabase › SQL Editor. Creates the tables, access rules and login functions. |
+| `supabase/setup.sql` | Run once in Supabase › SQL Editor. Creates the tables, access rules and login functions. Safe to run again after every update. |
+| `vendor/` | html2canvas, pako, UPNG – used only by the snapshot camera, loaded on first tap (licences in `vendor/LICENSES.txt`). |
 
 Not in this repo (upload from the Admin screen on your PC): `VMM_Store_Master.csv`, `Products.csv`, `Escalation_Matrix.csv`.
 The escalation matrix has staff phone numbers, so it must not go into a public repo.
@@ -54,6 +67,20 @@ The escalation matrix has staff phone numbers, so it must not go into a public r
 - A person trying wrong PINs can lock a code for 15 minutes (Admin can reset).
 - Anyone who knows a store's code, registered mobile and is at the store can reset its PIN – keep the registered mobile with the SM.
 - Logins refused by the GPS fence are stopped on the phone, so they do not appear in the log.
+- A deleted enquiry can be restored only by SQL from the copy kept in `dge_audit` (ask Central Ops).
+- Copying an image to the clipboard works in Chrome / Edge / Safari; on Android, WhatsApp cannot paste images – use **Share**.
+
+## Load (tested on a local copy, 2 CPU cores, 40,000 enquiries, 5,000 open sessions)
+
+| Call | What triggers it | Per second (40 at once) |
+|---|---|---|
+| App open (session check + settings) | opening the app | ~3,900 |
+| Refresh changed enquiries | every 5 min while used | ~2,200 |
+| Full store download | first login on a phone | ~570 |
+| Save enquiry (+ dashboard counters) | Save | ~630 |
+| Login (PIN check) | Enter | ~370 |
+
+5,000 users each doing something every 30 seconds is about 170 database calls a second – well inside these numbers. Supabase's free plan runs on a **shared** CPU, so expect less than this; the numbers above are not a guarantee for the free plan.
 
 ## Supabase free plan – what to watch
 
@@ -71,3 +98,9 @@ The escalation matrix has staff phone numbers, so it must not go into a public r
 4. Follow-up, escalate, convert, lost; AM reopens.
 5. Another store opening this enquiry's link gets "Not allowed".
 6. HO dashboard → tap AM → store leaderboard; hot / overdue lists; export.
+7. v8: store login shows only Store code; AM code there is refused; switch link works.
+8. v8: edit an enquiry (reason asked) → journey + Edit & delete log; Admin delete (reason) → gone from store list and dashboards.
+9. v8: Admin › Sessions shows the store; Force logout → store sees "Logged out by Admin".
+10. v8: store does nothing for the no-save minutes → warning, then logged out.
+11. v8: customer and buyer WhatsApp have no links; discount % appears in the buyer message.
+12. v8: camera on a dashboard panel → "Copied (xx KB)", ≤ 64 KB; filter box above each table.

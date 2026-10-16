@@ -1,5 +1,5 @@
 -- =====================================================================
--- VMM Diwali Gifting Enquiry – Supabase backend (v7)
+-- VMM Diwali Gifting Enquiry – Supabase backend (v8)
 -- Same app and screens. Firestore is replaced by one Postgres table of
 -- documents. Every read and write goes through the functions below,
 -- which apply the access rules. Browsers can never touch the tables
@@ -7,6 +7,9 @@
 --
 -- v7 adds: self-service Forgot PIN (registered mobile), idle / maximum
 -- session time-out set by Admin in minutes, and a login / PIN log.
+-- v8 adds: Admin-only enquiry delete with reason, edit with reason
+-- (both in the Edit & delete log), Admin Sessions tab with force logout,
+-- store "no save" time-out, idle default 15 min, lighter login hashing.
 --
 -- Run this whole file in Supabase › SQL Editor › New query › Run.
 -- Safe to run again: it keeps all data and only replaces functions.
@@ -28,6 +31,8 @@ drop sequence if exists public.enquiry_seq;
 drop function if exists public.dge_sign_in(text, text);
 drop function if exists public.dge_create_login(text, text);
 drop function if exists public.dge_sign_out(text);
+-- v7 signature that changed in v8
+drop function if exists public.dge_new_session(text, uuid);
 
 create extension if not exists pgcrypto with schema extensions;
 
@@ -58,6 +63,24 @@ create table if not exists public.dge_sessions (
   expires_at timestamptz not null
 );
 alter table public.dge_sessions add column if not exists last_seen timestamptz not null default now();
+-- v8: who is logged in (Admin › Sessions), last save (store "no save" time-out), Admin force logout
+alter table public.dge_sessions add column if not exists code       text;
+alter table public.dge_sessions add column if not exists role       text;
+alter table public.dge_sessions add column if not exists meta       jsonb;
+alter table public.dge_sessions add column if not exists last_save  timestamptz not null default now();
+alter table public.dge_sessions add column if not exists end_reason text;
+
+-- v8: enquiry edits and Admin deletes (with reason)
+create table if not exists public.dge_audit (
+  id         bigserial   primary key,
+  at         timestamptz not null default now(),
+  code       text        not null,      -- who did it
+  action     text        not null,      -- EDIT | DELETE
+  enq_id     text        not null,
+  store_code text,
+  reason     text,
+  detail     jsonb
+);
 
 -- registered mobile per code, used for self-service Forgot PIN (bcrypt hash only)
 create table if not exists public.dge_recovery (
@@ -85,9 +108,11 @@ alter table public.dge_logins   enable row level security;
 alter table public.dge_sessions enable row level security;
 alter table public.dge_recovery enable row level security;
 alter table public.dge_auth_log enable row level security;
-revoke all on public.dge_docs, public.dge_logins, public.dge_sessions, public.dge_recovery, public.dge_auth_log
+alter table public.dge_audit    enable row level security;
+revoke all on public.dge_docs, public.dge_logins, public.dge_sessions, public.dge_recovery, public.dge_auth_log, public.dge_audit
   from public, anon, authenticated;
 revoke all on sequence public.dge_auth_log_id_seq from public, anon, authenticated;
+revoke all on sequence public.dge_audit_id_seq from public, anon, authenticated;
 
 create index if not exists dge_enq_store_upd on public.dge_docs ((data->'storeCode'), (data->'updatedAt')) where col = 'enquiries';
 create index if not exists dge_enq_am_upd    on public.dge_docs ((data->'amCode'), (data->'updatedAt'))    where col = 'enquiries';
@@ -99,6 +124,9 @@ create index if not exists dge_sessions_exp  on public.dge_sessions (expires_at)
 create index if not exists dge_sessions_mail on public.dge_sessions (email);
 create index if not exists dge_log_at        on public.dge_auth_log (at desc);
 create index if not exists dge_log_code      on public.dge_auth_log (code, at desc);
+create index if not exists dge_sessions_seen on public.dge_sessions (last_seen);
+create index if not exists dge_audit_at      on public.dge_audit (at desc);
+create index if not exists dge_audit_store   on public.dge_audit (store_code, at desc);
 
 -- ---------- 2. Small helpers ----------
 create or replace function public.dge_str(v jsonb, n int) returns boolean
@@ -168,6 +196,17 @@ language sql stable set search_path = public as $$
   select to_char(now() at time zone 'Asia/Kolkata', 'YYYY-MM-DD"T"HH24:MI:SS');
 $$;
 
+-- v8: before / after values for the Edit & delete log (mobile masked, products as a summary)
+create or replace function public.dge_audit_view(d jsonb, f text[]) returns jsonb
+language sql immutable set search_path = public as $$
+  select coalesce(jsonb_object_agg(k, case
+            when k = 'mobile' then to_jsonb(left(d ->> 'mobile', 2) || '•••••' || right(d ->> 'mobile', 3))
+            when k = 'lines'  then to_jsonb(d ->> 'productSummary')
+            else d -> k end), '{}'::jsonb)
+    from unnest(coalesce(f, '{}'::text[])) k
+   where d ? k;
+$$;
+
 -- Apply a write the way Firestore does.
 --   {__inc:n}  -> add n      {__union:x} -> append x if missing
 --   {__now:1}  -> server time in ms
@@ -219,6 +258,10 @@ declare
   v_created timestamptz;
   v_last    timestamptz;
   v_exp     timestamptz;
+  v_save    timestamptz;
+  v_srole   text;
+  v_end     text;
+  v_nosave  int;
   v_local   text;
   v_code    text := '';
   v_k       text := '';
@@ -236,8 +279,8 @@ begin
   if p_token is not null and p_token <> '' then
     if length(p_token) between 32 and 128 then
       v_th := encode(extensions.digest(p_token, 'sha256'), 'hex');
-      select s.email, s.uid, s.created_at, s.last_seen, s.expires_at
-        into v_email, v_uid, v_created, v_last, v_exp
+      select s.email, s.uid, s.created_at, s.last_seen, s.expires_at, s.last_save, s.role, s.end_reason
+        into v_email, v_uid, v_created, v_last, v_exp, v_save, v_srole, v_end
         from public.dge_sessions s where s.token_hash = v_th;
     end if;
     if v_email is null then
@@ -247,19 +290,25 @@ begin
       v_local := split_part(v_email, '@', 1);
       v_code  := upper(split_part(v_local, '.', 1));
       v_k     := split_part(v_local, '.', 2);
-      v_idle  := public.dge_set_int(st, 'idleMins', 30, 5, 1440);
+      v_idle  := public.dge_set_int(st, 'idleMins', 15, 5, 1440);
       v_max   := public.dge_set_int(st, 'sessionMins', 720, 30, 43200);
+      v_nosave := public.dge_set_int(st, 'noSaveMins', 10, 0, 720);
       select data into u from public.dge_docs where col = 'users' and id = v_code;
-      if v_exp < now() or v_created < now() - make_interval(mins => v_max) then
+      if v_end is not null then
+        v_why := v_end;                                        -- Admin force logout (already logged)
+      elsif v_exp < now() or v_created < now() - make_interval(mins => v_max) then
         v_why := 'Session time limit reached (' || v_max || ' min) – please log in again.';
       elsif v_last < now() - make_interval(mins => v_idle) then
         v_why := 'Logged out after ' || v_idle || ' min with no activity – please log in again.';
+      elsif coalesce(v_srole, u ->> 'role', '') = 'STORE' and v_nosave > 0
+            and coalesce(v_save, v_created) < now() - make_interval(mins => v_nosave) then
+        v_why := 'Logged out – no enquiry or follow-up saved in ' || v_nosave || ' min. Please log in again.';
       elsif u is not null and coalesce(u ->> 'uid', '') <> '' and u ->> 'uid' <> v_uid::text then
         v_why := 'Your PIN was reset – please log in again.';
       end if;
       if v_why <> '' then
         delete from public.dge_sessions where token_hash = v_th;
-        perform public.dge_log(v_code, 'SESSION_END', true, v_why, null);
+        if v_end is null then perform public.dge_log(v_code, 'SESSION_END', true, v_why, null); end if;
         v_expired := true; v_email := null; v_uid := null; v_code := ''; v_k := ''; u := null;
       elsif v_last < now() - interval '1 minute' then
         update public.dge_sessions set last_seen = now() where token_hash = v_th;
@@ -278,6 +327,7 @@ begin
     'auth',  v_email is not null,
     'bound', v_bound, 'role', v_role, 'admin', v_admin,
     'mgmt',  v_bound and v_role in ('ZFM', 'HO', 'ADMIN'),
+    'th',    case when v_email is not null then v_th end,
     'expired', v_expired, 'why', v_why);
 end $$;
 
@@ -360,11 +410,27 @@ begin
          and n ->> 'status' = 'New'
          and n -> 'followupCount' = '0'::jsonb;
     end if;
-    return public.dge_can_see(c, o)
-       and public.dge_changed(o, n) <@ array[
+    ch := public.dge_changed(o, n);
+    if not (public.dge_can_see(c, o)
+       and ch <@ array[
              'status', 'nextFollowUp', 'lastContactAt', 'lastOutcome', 'followupCount', 'expectedPurchaseDate', 'priority',
              'acts', 'updatedAt', 'updatedBy', 'saleValue', 'saleQty', 'billNo', 'saleDate', 'lostReason', 'lostDate',
-             'escalationStatus', 'lastEscalationAt', 'lastEscalationTo', 'escGroup'];
+             'escalationStatus', 'lastEscalationAt', 'lastEscalationTo', 'escGroup',
+             -- v8 edit (needs a reason, see below)
+             'customerName', 'mobile', 'customerType', 'company', 'gstRequired', 'gstin', 'city', 'consent', 'consentAt',
+             'lines', 'cats', 'totalQty', 'estValue', 'isHot', 'productSummary', 'intendedUse', 'remarks']) then
+      return false;
+    end if;
+    -- v8: customer / product changes only on an open enquiry, and only together with an
+    -- "EDITED" journey entry that carries the reason (at least 5 letters)
+    if ch && array['customerName', 'mobile', 'customerType', 'company', 'gstRequired', 'gstin', 'city', 'consent', 'consentAt',
+                   'lines', 'cats', 'totalQty', 'estValue', 'isHot', 'productSummary', 'intendedUse', 'remarks'] then
+      if coalesce(o ->> 'status', '') not in ('New', 'Follow-up') or 'status' = any(ch) then return false; end if;
+      if jsonb_array_length(n -> 'acts') <> jsonb_array_length(coalesce(o -> 'acts', '[]'::jsonb)) + 1 then return false; end if;
+      if (n -> 'acts' -> -1 ->> 'type') is distinct from 'EDITED'
+         or length(trim(coalesce(n -> 'acts' -> -1 ->> 'note', ''))) < 5 then return false; end if;
+    end if;
+    return true;
 
   elsif p_col = 'stats' then
     return is_bound
@@ -515,6 +581,8 @@ declare
   v_exist boolean;
   now_ms  bigint := floor(extract(epoch from clock_timestamp()) * 1000);
   ok      boolean;
+  v_saved boolean := false;
+  v_ch    text[];
 begin
   if (c ->> 'expired')::boolean then return jsonb_build_object('__expired', c ->> 'why'); end if;
   if p_ops is null or jsonb_typeof(p_ops) <> 'array' or jsonb_array_length(p_ops) = 0 or jsonb_array_length(p_ops) > 500 then
@@ -542,7 +610,8 @@ begin
 
     if v_t = 'del' then
       if not v_exist then continue; end if;
-      if not (coalesce((c ->> 'admin')::boolean, false) and v_col in ('enquiries', 'stats', 'pinResets', 'users')) then
+      -- enquiries are deleted only through dge_delete_enquiry (Admin + reason, logged)
+      if not (coalesce((c ->> 'admin')::boolean, false) and v_col in ('stats', 'pinResets', 'users')) then
         raise exception 'permission-denied: Missing or insufficient permissions.';
       end if;
       delete from public.dge_docs where col = v_col and id = v_id;
@@ -578,7 +647,25 @@ begin
     elsif v_col = 'pinResets' then
       perform public.dge_log(v_id, 'PIN_REQUEST', true, 'Asked Central Ops to reset the PIN', null);
     end if;
+
+    if v_col = 'enquiries' then
+      v_saved := true;
+      -- v8: an edit (new "EDITED" journey entry) goes into the Edit & delete log
+      if v_exist and jsonb_array_length(coalesce(n -> 'acts', '[]'::jsonb)) > jsonb_array_length(coalesce(o -> 'acts', '[]'::jsonb))
+         and (n -> 'acts' -> -1 ->> 'type') = 'EDITED' then
+        select coalesce(array_agg(x), '{}'::text[]) into v_ch
+          from unnest(public.dge_changed(o, n)) x where x not in ('acts', 'updatedAt', 'updatedBy', 'cats', 'consentAt');
+        insert into public.dge_audit (code, action, enq_id, store_code, reason, detail)
+        values (coalesce(nullif(c ->> 'code', ''), '?'), 'EDIT', v_id, n ->> 'storeCode', left(n -> 'acts' -> -1 ->> 'note', 300),
+                jsonb_build_object('fields', to_jsonb(v_ch),
+                                   'before', public.dge_audit_view(o, v_ch), 'after', public.dge_audit_view(n, v_ch)));
+      end if;
+    end if;
   end loop;
+  -- v8: any enquiry write counts as "saved" for the store no-save time-out
+  if v_saved and c ->> 'th' is not null then
+    update public.dge_sessions set last_save = now() where token_hash = c ->> 'th';
+  end if;
   return jsonb_build_object('ok', true);
 end $$;
 
@@ -588,18 +675,26 @@ language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.dge_recovery where code = upper(p_code));
 $$;
 
-create or replace function public.dge_new_session(p_email text, p_uid uuid) returns text
+create or replace function public.dge_new_session(p_email text, p_uid uuid, p_meta jsonb default null) returns text
 language plpgsql security definer set search_path = public, extensions as $$
 declare
-  tok   text := encode(extensions.gen_random_bytes(32), 'hex');
-  st    jsonb;
-  v_max int;
+  tok    text := encode(extensions.gen_random_bytes(32), 'hex');
+  st     jsonb;
+  v_max  int;
+  v_code text := upper(split_part(split_part(p_email, '@', 1), '.', 1));
+  v_role text;
 begin
   select data into st from public.dge_docs where col = 'settings' and id = 'app';
   v_max := public.dge_set_int(st, 'sessionMins', 720, 30, 43200);
-  delete from public.dge_sessions where expires_at < now() or last_seen < now() - interval '2 days';
-  insert into public.dge_sessions (token_hash, email, uid, expires_at, last_seen)
-  values (encode(extensions.digest(tok, 'sha256'), 'hex'), p_email, p_uid, now() + make_interval(mins => v_max), now());
+  select data ->> 'role' into v_role from public.dge_docs where col = 'users' and id = v_code;
+  if v_role is null and st is null then v_role := 'ADMIN'; end if;     -- first-time setup
+  -- housekeeping on a few logins only (keeps the morning login rush light)
+  if random() < 0.05 then
+    delete from public.dge_sessions where expires_at < now() - interval '1 hour' or last_seen < now() - interval '2 days';
+  end if;
+  insert into public.dge_sessions (token_hash, email, uid, expires_at, last_seen, last_save, code, role, meta)
+  values (encode(extensions.digest(tok, 'sha256'), 'hex'), p_email, p_uid, now() + make_interval(mins => v_max), now(), now(),
+          v_code, v_role, public.dge_clean_meta(p_meta));
   return tok;
 end $$;
 
@@ -638,7 +733,7 @@ begin
   update public.dge_logins set failed = 0, locked_until = null where email = v_email;
   perform public.dge_log(v_code, 'LOGIN', true, 'Logged in', p_meta);
   return jsonb_build_object('ok', true, 'email', v_email, 'uid', v_uid,
-    'token', public.dge_new_session(v_email, v_uid), 'hasRecovery', public.dge_has_recovery(v_code));
+    'token', public.dge_new_session(v_email, v_uid, p_meta), 'hasRecovery', public.dge_has_recovery(v_code));
 end $$;
 
 -- first login with the default PIN creates the account (only when the code is free to claim)
@@ -669,11 +764,11 @@ begin
     return jsonb_build_object('ok', false, 'code', 'auth/operation-not-allowed');
   end if;
   insert into public.dge_logins (email, pin_hash)
-  values (v_email, extensions.crypt(p_pin, extensions.gen_salt('bf', 8)))
+  values (v_email, extensions.crypt(p_pin, extensions.gen_salt('bf', 6)))
   returning uid into v_uid;
   perform public.dge_log(v_code, 'FIRST_LOGIN', true, 'Logged in with default PIN', p_meta);
   return jsonb_build_object('ok', true, 'email', v_email, 'uid', v_uid,
-    'token', public.dge_new_session(v_email, v_uid), 'hasRecovery', public.dge_has_recovery(v_code));
+    'token', public.dge_new_session(v_email, v_uid, p_meta), 'hasRecovery', public.dge_has_recovery(v_code));
 end $$;
 
 create or replace function public.dge_change_pin(p_token text, p_pin text) returns jsonb
@@ -689,7 +784,7 @@ begin
     return jsonb_build_object('ok', false, 'code', 'auth/weak-password', 'message', 'Too easy – choose a different 6-digit PIN');
   end if;
   update public.dge_logins
-     set pin_hash = extensions.crypt(p_pin, extensions.gen_salt('bf', 8)), pin_changed_at = now(), failed = 0, locked_until = null
+     set pin_hash = extensions.crypt(p_pin, extensions.gen_salt('bf', 6)), pin_changed_at = now(), failed = 0, locked_until = null
    where email = c ->> 'email';
   delete from public.dge_sessions where email = c ->> 'email' and token_hash <> v_th;   -- sign out other phones
   perform public.dge_log(c ->> 'code', 'PIN_CHANGED', true, 'Set own PIN', null);
@@ -718,7 +813,7 @@ begin
     return jsonb_build_object('ok', false, 'code', 'permission-denied', 'message', 'Not allowed for this login');
   end if;
   insert into public.dge_recovery (code, mobile_hash, last4)
-  values (v_code, extensions.crypt(p_mobile, extensions.gen_salt('bf', 8)), right(p_mobile, 4))
+  values (v_code, extensions.crypt(p_mobile, extensions.gen_salt('bf', 6)), right(p_mobile, 4))
   on conflict (code) do update set mobile_hash = excluded.mobile_hash, last4 = excluded.last4,
                                    set_at = now(), failed = 0, locked_until = null;
   perform public.dge_log(v_code, 'MOBILE_REGISTERED', true, 'Mobile ending ' || right(p_mobile, 4), null);
@@ -778,7 +873,7 @@ begin
   v_email := lower(v_code) || '.' || v_k || '@vmm-diwali.app';
   delete from public.dge_logins where split_part(split_part(email, '@', 1), '.', 1) = lower(v_code);
   insert into public.dge_logins (email, pin_hash, pin_changed_at)
-  values (v_email, extensions.crypt(p_pin, extensions.gen_salt('bf', 8)), now())
+  values (v_email, extensions.crypt(p_pin, extensions.gen_salt('bf', 6)), now())
   returning uid into v_uid;
   update public.dge_docs
      set data = data || jsonb_build_object('uid', v_uid::text, 'k', v_k, 'pinSet', true, 'pinAt', v_now,
@@ -788,7 +883,7 @@ begin
   delete from public.dge_docs where col = 'pinResets' and id = v_code;
   perform public.dge_log(v_code, 'PIN_RESET_SELF', true, 'New PIN set with registered mobile', p_meta);
   return jsonb_build_object('ok', true, 'email', v_email, 'uid', v_uid,
-    'token', public.dge_new_session(v_email, v_uid), 'hasRecovery', true);
+    'token', public.dge_new_session(v_email, v_uid, p_meta), 'hasRecovery', true);
 end $$;
 
 create or replace function public.dge_whoami(p_token text) returns jsonb
@@ -843,6 +938,220 @@ begin
                    else (select last4 from public.dge_recovery where code = upper(trim(p_code))) end);
 end $$;
 
+-- ---------- 4b. v8: Admin delete, Sessions tab, Edit & delete log ----------
+
+-- add / subtract counters in one daily zone summary (same layout the app writes)
+create or replace function public.dge_stat_add(p_date text, p_zone text, p_upd jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_id   text;
+  o      jsonb;
+  now_ms bigint := floor(extract(epoch from clock_timestamp()) * 1000);
+begin
+  if coalesce(p_date, '') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' or coalesce(p_zone, '') = '' then return; end if;
+  v_id := p_date || '_' || p_zone;
+  select data into o from public.dge_docs where col = 'stats' and id = v_id for update;
+  insert into public.dge_docs (col, id, data, updated_at)
+  values ('stats', v_id, public.dge_apply(coalesce(o, '{}'::jsonb), p_upd || jsonb_build_object('date', p_date, 'zone', p_zone), true, now_ms), clock_timestamp())
+  on conflict (col, id) do update set data = excluded.data, updated_at = excluded.updated_at;
+end $$;
+
+-- Admin deletes an enquiry with a reason. Dashboards are corrected, the full record is kept
+-- in the Edit & delete log, and phones drop it on their next refresh (tombstone).
+create or replace function public.dge_delete_enquiry(p_token text, p_id text, p_reason text) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  c        jsonb := public.dge_ctx(p_token);
+  d        jsonb;
+  v_reason text := left(trim(coalesce(p_reason, '')), 300);
+  s        text;
+  z        text;
+  t        jsonb;
+  v_cat    jsonb;
+  v_plost  jsonb;
+  v_val    numeric;
+  m1       jsonb := '{"__inc": -1}'::jsonb;
+  now_ms   bigint := floor(extract(epoch from clock_timestamp()) * 1000);
+begin
+  if (c ->> 'expired')::boolean then return jsonb_build_object('__expired', c ->> 'why'); end if;
+  if not coalesce((c ->> 'admin')::boolean, false) then
+    raise exception 'permission-denied: Missing or insufficient permissions.';
+  end if;
+  if length(v_reason) < 5 then raise exception 'invalid-argument: Give a reason (at least 5 letters).'; end if;
+  select data into d from public.dge_docs where col = 'enquiries' and id = p_id for update;
+  if d is null then raise exception 'not-found: Enquiry not found.'; end if;
+  if coalesce((d ->> 'deleted')::boolean, false) then raise exception 'invalid-argument: This enquiry is already deleted.'; end if;
+
+  s := d ->> 'storeCode';
+  z := coalesce(nullif(d ->> 'zone', ''), 'Z_' || coalesce(nullif(regexp_replace(coalesce(d ->> 'zfm', 'NA'), '[^A-Za-z0-9]', '', 'g'), ''), 'NA'));
+  v_val := case when jsonb_typeof(d -> 'estValue') = 'number' then (d ->> 'estValue')::numeric else 0 end;
+
+  -- 1. take it out of the capture day
+  select coalesce(jsonb_object_agg(k, jsonb_build_object('__inc', -((v #>> '{}')::numeric))), '{}'::jsonb) into v_cat
+    from jsonb_each(case when jsonb_typeof(d -> 'cats') = 'object' then d -> 'cats' else '{}'::jsonb end) as x(k, v)
+   where jsonb_typeof(v) = 'number';
+  perform public.dge_stat_add(d ->> 'createdDate', z, jsonb_build_object(
+    's', jsonb_build_object(s, jsonb_strip_nulls(jsonb_build_object(
+           'e', m1, 'v', jsonb_build_object('__inc', -v_val),
+           'h', case when d ->> 'isHot' = 'true' then m1 end,
+           'b', case when coalesce(d ->> 'customerType', 'Individual') <> 'Individual' then m1 end,
+           'g', case when d ->> 'gstRequired' = 'Yes' then m1 end))),
+    'cat', v_cat,
+    'typ', jsonb_build_object(coalesce(d ->> 'customerType', 'Individual'), jsonb_build_object('n', m1, 'v', jsonb_build_object('__inc', -v_val)))));
+
+  -- 2. first follow-up / outcome day
+  select a into t from jsonb_array_elements(coalesce(d -> 'acts', '[]'::jsonb)) a
+   where a ->> 'type' in ('FOLLOWUP', 'CONVERTED', 'LOST') order by a ->> 'at' limit 1;
+  if t is not null then
+    perform public.dge_stat_add(case when t ->> 'type' = 'CONVERTED' and coalesce(d ->> 'saleDate', '') <> '' then d ->> 'saleDate' else left(t ->> 'at', 10) end,
+      z, jsonb_build_object('s', jsonb_build_object(s, jsonb_build_object('f', m1))));
+  end if;
+
+  -- 3. outcome
+  if d ->> 'status' = 'Converted' then
+    perform public.dge_stat_add(d ->> 'saleDate', z, jsonb_build_object(
+      's', jsonb_build_object(s, jsonb_build_object('c', m1, 'cv', jsonb_build_object('__inc', -round(case when jsonb_typeof(d -> 'saleValue') = 'number' then (d ->> 'saleValue')::numeric else 0 end)))),
+      'typ', jsonb_build_object(coalesce(d ->> 'customerType', 'Individual'), jsonb_build_object('c', m1))));
+  elsif d ->> 'status' = 'Lost' then
+    if d ->> 'lostReason' = 'Product unavailable' then
+      select coalesce(jsonb_object_agg(left(regexp_replace(coalesce(l ->> 'name', 'Other'), '[^A-Za-z0-9]', '_', 'g'), 60),
+                                       jsonb_build_object('__inc', -coalesce((l ->> 'qty')::numeric, 0))), '{}'::jsonb)
+        into v_plost from jsonb_array_elements(coalesce(d -> 'lines', '[]'::jsonb)) l;
+    end if;
+    perform public.dge_stat_add(d ->> 'lostDate', z, jsonb_build_object(
+      's', jsonb_build_object(s, jsonb_build_object('l', m1)),
+      'lost', jsonb_build_object(regexp_replace(coalesce(d ->> 'lostReason', 'Other'), '[^A-Za-z0-9]', '_', 'g'), m1),
+      'plost', coalesce(v_plost, '{}'::jsonb)));
+  end if;
+
+  -- 4. keep the full record in the log, leave a tombstone without customer data
+  insert into public.dge_audit (code, action, enq_id, store_code, reason, detail)
+  values (coalesce(nullif(c ->> 'code', ''), '?'), 'DELETE', p_id, s, v_reason, jsonb_build_object(
+    'summary', jsonb_build_object('customerName', d ->> 'customerName', 'mobile', left(d ->> 'mobile', 2) || '•••••' || right(d ->> 'mobile', 3),
+                                  'customerType', d ->> 'customerType', 'status', d ->> 'status', 'estValue', d -> 'estValue',
+                                  'productSummary', d ->> 'productSummary', 'createdDate', d ->> 'createdDate', 'capturedBy', d ->> 'capturedBy'),
+    'snapshot', d));
+  update public.dge_docs
+     set data = jsonb_build_object('id', p_id, 'storeCode', s, 'storeName', d -> 'storeName', 'amCode', d -> 'amCode', 'zfm', d -> 'zfm',
+                                   'zone', z, 'createdDate', d -> 'createdDate', 'status', 'Deleted', 'deleted', true,
+                                   'deletedAt', public.dge_now_ist(), 'deletedBy', c ->> 'code', 'deleteReason', v_reason, 'updatedAt', now_ms),
+         updated_at = clock_timestamp()
+   where col = 'enquiries' and id = p_id;
+  if random() < 0.02 then delete from public.dge_audit where at < now() - interval '180 days'; end if;
+  return jsonb_build_object('ok', true, 'deleted', p_id);
+end $$;
+
+-- Admin › Sessions: who is logged in now, and who logged in today
+create or replace function public.dge_admin_sessions(p_token text) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  c        jsonb := public.dge_ctx(p_token);
+  st       jsonb;
+  v_idle   int;
+  v_max    int;
+  v_nosave int;
+  v_now    jsonb;
+  v_today  jsonb;
+  v_day    timestamptz := (date_trunc('day', now() at time zone 'Asia/Kolkata')) at time zone 'Asia/Kolkata';
+  v_fmt    text := 'YYYY-MM-DD HH24:MI';
+begin
+  if (c ->> 'expired')::boolean then return jsonb_build_object('__expired', c ->> 'why'); end if;
+  if not coalesce((c ->> 'admin')::boolean, false) then
+    raise exception 'permission-denied: Missing or insufficient permissions.';
+  end if;
+  select data into st from public.dge_docs where col = 'settings' and id = 'app';
+  v_idle   := public.dge_set_int(st, 'idleMins', 15, 5, 1440);
+  v_max    := public.dge_set_int(st, 'sessionMins', 720, 30, 43200);
+  v_nosave := public.dge_set_int(st, 'noSaveMins', 10, 0, 720);
+  delete from public.dge_sessions where expires_at < now() - interval '1 hour' or last_seen < now() - interval '2 days';
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'sid', left(s.token_hash, 12), 'code', s.code, 'role', s.role,
+           'desig', s.meta ->> 'desig', 'km', s.meta -> 'km', 'test', s.meta -> 'test', 'ua', s.meta ->> 'ua',
+           'login', to_char(s.created_at at time zone 'Asia/Kolkata', v_fmt),
+           'seen',  to_char(s.last_seen  at time zone 'Asia/Kolkata', v_fmt),
+           'saved', to_char(s.last_save  at time zone 'Asia/Kolkata', v_fmt),
+           'idleMin', floor(extract(epoch from now() - s.last_seen) / 60),
+           'saveMin', floor(extract(epoch from now() - s.last_save) / 60),
+           'me', s.token_hash = c ->> 'th')
+         order by s.last_seen desc), '[]'::jsonb)
+    into v_now
+    from (select * from public.dge_sessions s
+           where s.end_reason is null and s.expires_at > now()
+             and s.created_at > now() - make_interval(mins => v_max)
+             and s.last_seen  > now() - make_interval(mins => v_idle)
+             and not (coalesce(s.role, '') = 'STORE' and v_nosave > 0 and s.last_save < now() - make_interval(mins => v_nosave))
+           order by s.last_seen desc limit 3000) s;
+
+  select coalesce(jsonb_agg(jsonb_build_object('code', x.code, 'first', to_char(x.f at time zone 'Asia/Kolkata', v_fmt),
+           'last', to_char(x.l at time zone 'Asia/Kolkata', v_fmt), 'logins', x.n, 'desig', x.desig, 'km', x.km, 'test', x.test)
+         order by x.l desc), '[]'::jsonb)
+    into v_today
+    from (select code, min(at) f, max(at) l, count(*) n,
+                 (array_agg(meta ->> 'desig' order by at desc))[1] desig,
+                 (array_agg(meta -> 'km' order by at desc))[1] km,
+                 (array_agg(meta -> 'test' order by at desc))[1] test
+            from public.dge_auth_log
+           where at >= v_day and ok and event in ('LOGIN', 'FIRST_LOGIN', 'PIN_RESET_SELF')
+           group by code order by max(at) desc limit 3000) x;
+
+  return jsonb_build_object('now', v_now, 'today', v_today, 'idleMins', v_idle, 'noSaveMins', v_nosave, 'sessionMins', v_max,
+                            'at', to_char(now() at time zone 'Asia/Kolkata', 'YYYY-MM-DD HH24:MI:SS'));
+end $$;
+
+-- Admin ends one session (p_sid) or every session of a code (p_code)
+create or replace function public.dge_force_logout(p_token text, p_sid text, p_code text) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  c   jsonb := public.dge_ctx(p_token);
+  r   record;
+  n   int := 0;
+  why text;
+begin
+  if (c ->> 'expired')::boolean then return jsonb_build_object('__expired', c ->> 'why'); end if;
+  if not coalesce((c ->> 'admin')::boolean, false) then
+    raise exception 'permission-denied: Missing or insufficient permissions.';
+  end if;
+  if coalesce(p_sid, '') = '' and coalesce(p_code, '') = '' then raise exception 'invalid-argument: Pick a session or a code.'; end if;
+  why := 'Logged out by Admin (' || coalesce(nullif(c ->> 'code', ''), 'Admin') || ') – please log in again.';
+  for r in update public.dge_sessions
+              set end_reason = why, expires_at = now()
+            where end_reason is null
+              and token_hash is distinct from c ->> 'th'                 -- never your own session
+              and ((coalesce(p_sid, '') <> '' and left(token_hash, 12) = p_sid)
+                or (coalesce(p_sid, '') = '' and code = upper(trim(p_code))))
+           returning code loop
+    n := n + 1;
+    perform public.dge_log(r.code, 'SESSION_END', true, 'Forced logout by Admin ' || coalesce(nullif(c ->> 'code', ''), ''), null);
+  end loop;
+  return jsonb_build_object('ok', true, 'ended', n);
+end $$;
+
+-- Admin › Edit & delete log (newest first; the deleted record itself is not sent to the phone)
+create or replace function public.dge_audit_list(p_token text, p_store text default null, p_action text default null, p_limit int default 500)
+returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  c   jsonb := public.dge_ctx(p_token);
+  res jsonb;
+begin
+  if (c ->> 'expired')::boolean then return jsonb_build_object('__expired', c ->> 'why'); end if;
+  if not coalesce((c ->> 'admin')::boolean, false) then
+    raise exception 'permission-denied: Missing or insufficient permissions.';
+  end if;
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'at', to_char(a.at at time zone 'Asia/Kolkata', 'YYYY-MM-DD HH24:MI:SS'), 'code', a.code, 'action', a.action,
+           'enq', a.enq_id, 'store', a.store_code, 'reason', a.reason, 'detail', coalesce(a.detail, '{}'::jsonb) - 'snapshot')
+         order by a.at desc), '[]'::jsonb)
+    into res
+    from (select * from public.dge_audit
+           where (coalesce(p_store, '') = '' or store_code = upper(trim(p_store)))
+             and (coalesce(p_action, '') = '' or action = p_action)
+           order by at desc
+           limit least(greatest(coalesce(p_limit, 500), 1), 2000)) a;
+  return jsonb_build_object('rows', res);
+end $$;
+
 -- ---------- 5. Who may call what ----------
 -- Supabase gives anon/authenticated EXECUTE on new functions by default: take it away first.
 revoke execute on function
@@ -852,11 +1161,13 @@ revoke execute on function
   public.dge_apply(jsonb, jsonb, boolean, bigint), public.dge_ctx(text),
   public.dge_can_see(jsonb, jsonb), public.dge_valid_enq(jsonb),
   public.dge_allow_write(jsonb, text, text, boolean, jsonb, jsonb), public.dge_has_recovery(text),
-  public.dge_new_session(text, uuid),
+  public.dge_new_session(text, uuid, jsonb), public.dge_audit_view(jsonb, text[]), public.dge_stat_add(text, text, jsonb),
   public.dge_get(text, text, text), public.dge_query(text, text, jsonb, jsonb, int, text, text),
   public.dge_write(text, jsonb), public.dge_sign_in(text, text, jsonb), public.dge_create_login(text, text, jsonb),
   public.dge_change_pin(text, text), public.dge_set_recovery(text, text), public.dge_self_reset(text, text, text, jsonb),
-  public.dge_whoami(text), public.dge_sign_out(text, text), public.dge_auth_log_list(text, text, text, int)
+  public.dge_whoami(text), public.dge_sign_out(text, text), public.dge_auth_log_list(text, text, text, int),
+  public.dge_delete_enquiry(text, text, text), public.dge_admin_sessions(text), public.dge_force_logout(text, text, text),
+  public.dge_audit_list(text, text, text, int)
 from public, anon, authenticated;
 
 -- only the app's entry points are callable from the browser
@@ -864,7 +1175,9 @@ grant execute on function
   public.dge_get(text, text, text), public.dge_query(text, text, jsonb, jsonb, int, text, text),
   public.dge_write(text, jsonb), public.dge_sign_in(text, text, jsonb), public.dge_create_login(text, text, jsonb),
   public.dge_change_pin(text, text), public.dge_set_recovery(text, text), public.dge_self_reset(text, text, text, jsonb),
-  public.dge_whoami(text), public.dge_sign_out(text, text), public.dge_auth_log_list(text, text, text, int)
+  public.dge_whoami(text), public.dge_sign_out(text, text), public.dge_auth_log_list(text, text, text, int),
+  public.dge_delete_enquiry(text, text, text), public.dge_admin_sessions(text), public.dge_force_logout(text, text, text),
+  public.dge_audit_list(text, text, text, int)
 to anon, authenticated;
 
 notify pgrst, 'reload schema';

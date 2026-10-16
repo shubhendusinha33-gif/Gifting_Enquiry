@@ -227,6 +227,17 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .act .it em{font-style:normal;min-width:26px;height:26px;border-radius:13px;background:var(--gold2);color:var(--m9);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
 .ovx{overflow-x:auto}
 .tag{font-size:11px;color:var(--muted)}
+/* v8: snapshot camera, no-save warning, login mode link */
+.snaphost{position:relative}
+.tbl tr.more{display:none}
+.seg a{display:inline-flex;align-items:center;height:36px;padding:0 16px;background:#fff;color:var(--blue);font-size:13px;font-weight:600;text-decoration:none}.seg a.on{background:var(--blue);color:#fff;font-weight:800}
+.tfilter{height:38px;font-size:14px;max-width:280px;margin-bottom:8px}
+.snapbtn{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:17px;border:1px solid var(--line2);background:rgba(255,255,255,.92);color:var(--m);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.snapbtn:hover{background:#fff;color:var(--m9)}.snapbtn[disabled]{opacity:.5}
+.act .snapbtn{background:rgba(255,255,255,.12);border-color:rgba(242,209,139,.4);color:var(--gold2)}
+.snapprev{max-width:100%;max-height:46vh;object-fit:contain;border:1px solid var(--line);border-radius:12px;background:#fff}
+#nsw{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:55;background:var(--amber2,#8A4B00);color:#fff;padding:9px 14px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:var(--shadow);max-width:92vw;text-align:center}
+.lmode{font-size:13px;font-weight:800;color:var(--maroon,#5A0D24);text-decoration:none;align-self:center}
 @media(max-width:640px){.dtop{padding:14px 16px}.dbody{padding:16px}.kc b{font-size:24px}}
 </style>
 </head>
@@ -236,7 +247,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <script>
 /* ============================================================
-   VMM Diwali Gifting Enquiry – v6 (GitHub Pages + Supabase)
+   VMM Diwali Gifting Enquiry – v8 (GitHub Pages + Supabase)
    Supabase › Project Settings › API (or the green Connect button):
    paste the Project URL and the publishable (anon) key below.
    Never paste the service_role / secret key here.
@@ -247,7 +258,7 @@ const DB_CONFIG = {
   url: 'https://hibjphthtkpckbgdqwad.supabase.co',
   key: 'sb_publishable_rtdt7c1Dhs9dAUUHkKWXKw_3CSbh0Hj'
 };
-const APP_VERSION = 'v7';
+const APP_VERSION = 'v8';
 const DESIGNATIONS = ['SM', 'ASM', 'DM GM', 'DM FM', 'DM Apps'];
 const DEFAULT_PIN = '456987', LOGIN_DOMAIN = 'vmm-diwali.app';
 const SUPPORT_NAME = 'Shubhendu Sinha';
@@ -292,6 +303,9 @@ const IC = {
   box: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8"/></svg>',
   dl: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>',
   refresh: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg>',
+  cam: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="4"/></svg>',
+  edit: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+  trash: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
   doc: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2952B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2h9l5 5v15H6z"/><path d="M9 13h8M9 17h5"/></svg>',
   mandala: (sz, cls) => '<svg class="' + (cls || 'mandala') + '" width="' + sz + '" height="' + sz + '" viewBox="0 0 200 200" aria-hidden="true"><g fill="none" stroke="#F2D18B" stroke-width="0.8"><circle cx="100" cy="100" r="96"/><circle cx="100" cy="100" r="78"/><circle cx="100" cy="100" r="56"/><circle cx="100" cy="100" r="30"/><path d="M100 4 L118 82 L196 100 L118 118 L100 196 L82 118 L4 100 L82 82 Z"/><path d="M32 32 L108 92 L168 32 L108 108 L168 168 L92 108 L32 168 L92 92 Z"/></g></svg>'
 };
@@ -322,7 +336,7 @@ const CAT_GROUP_DEFAULT = {
   'Kitchen Appliances': 'CDIT_BRAND', 'Home Appliances': 'CDIT_BRAND', 'Travel': 'TA', 'Utility Bags & Backpacks': 'TA',
   'Gift Vouchers': 'GV', 'Dry Fruits Gift Packs': 'DF', 'Branded Food Gift Packs': 'BFGP'
 };
-const DEFAULT_SETTINGS = { capEnq: 60, capAct: 150, capRefresh: 30, radiusKm: 3, testMode: false, idleMins: 30, sessionMins: 720, hotQty: 20, hotValue: 25000, l2AfterHours: 2, diwaliDate: '2026-11-08', seasonStart: '2026-10-01',
+const DEFAULT_SETTINGS = { capEnq: 60, capAct: 150, capRefresh: 30, radiusKm: 3, testMode: false, idleMins: 15, sessionMins: 720, noSaveMins: 10, snapRoles: 'ADMIN', hotQty: 20, hotValue: 25000, l2AfterHours: 2, diwaliDate: '2026-11-08', seasonStart: '2026-10-01',
   catalogueUrl: 'https://qr1.be/XCLN', bulkContact: '0124-4555100', adminCodes: [], hoCodes: [], adminUids: [] };
 const OPEN = { 'New': 1, 'Follow-up': 1 };
 const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
@@ -406,6 +420,11 @@ function SupabaseAdapter(cfg) {
     hasRecovery: () => !!(auth && auth.hasRecovery),
     async authLog(code, event, limit) { return (await rpc('dge_auth_log_list', { p_token: tok(), p_code: code || null, p_event: event || null, p_limit: limit || 300 })) || { rows: [] }; },
     async signOut(reason) { const t = tok(); auth = null; saveAuth(); if (t) rpc('dge_sign_out', { p_token: t, p_reason: reason || null }).catch(() => { }); return anonUid; },
+    /* v8: Admin delete with reason, Sessions tab, Edit & delete log */
+    async delEnquiry(id, reason) { return await rpc('dge_delete_enquiry', { p_token: tok(), p_id: String(id), p_reason: reason }); },
+    async adminSessions() { return (await rpc('dge_admin_sessions', { p_token: tok() })) || { now: [], today: [] }; },
+    async forceLogout(sid, code) { return await rpc('dge_force_logout', { p_token: tok(), p_sid: sid || null, p_code: code || null }); },
+    async auditList(store, action, limit) { return (await rpc('dge_audit_list', { p_token: tok(), p_store: store || null, p_action: action || null, p_limit: limit || 500 })) || { rows: [] }; },
     async del(col, id) { await rpc('dge_write', { p_token: tok(), p_ops: [{ t: 'del', col, id: String(id) }] }); },
     async get(col, id) { return await rpc('dge_get', { p_token: tok(), p_col: col, p_id: String(id) }); },
     async set(col, id, data, merge) { await rpc('dge_write', { p_token: tok(), p_ops: [{ t: 'set', col, id: String(id), data, merge: !!merge }] }); },
@@ -464,6 +483,10 @@ function MemoryAdapter() {
     async changePw(pw) { st.auth[st.email] = pw; save(); },
     async signOut() { st.email = ''; save(); return st.uid; },
     async del(c, id) { delete col(c)[id]; save(); },
+    async delEnquiry(id, reason) { const d = col('enquiries')[id]; if (!d) throw uerr('Enquiry not found'); col('enquiries')[id] = { id, storeCode: d.storeCode, amCode: d.amCode, zfm: d.zfm, status: 'Deleted', deleted: true, deleteReason: reason, updatedAt: Date.now() }; save(); return { ok: true }; },
+    async adminSessions() { return { now: [], today: [], idleMins: 15, noSaveMins: 10, demo: true }; },
+    async forceLogout() { return { ended: 0 }; },
+    async auditList() { return { rows: [] }; },
     reset() { localStorage.removeItem(KEY); KV.clear(); },
     async get(c, id) { const d = col(c)[id]; return d ? Object.assign(clone(d), { _id: id }) : null; },
     async set(c, id, data, merge) { if (!merge) col(c)[id] = {}; col(c)[id] = col(c)[id] || {}; apply(col(c)[id], clone(data)); save(); },
@@ -568,19 +591,37 @@ const SVC = {
   /* per-device daily refresh meter (DB downloads) */
   meter() { const k = 'dge_meter_' + this.today(); const m = ls.get(k, null) || { r: 0, docs: 0 }; return { k, m }; },
   putLocal(doc) { if (this.cache && this.cache.docs && (this.cacheKey === 'enq_storeCode_' + doc.storeCode || this.cacheKey === 'enq_amCode_' + doc.amCode)) { this.cache.docs[doc.id] = doc; KV.set(this.cacheKey, this.cache); } },
-  cachedRows() { return this.cache ? Object.values(this.cache.docs) : []; }
+  cachedRows() { return this.cache ? Object.values(this.cache.docs).filter(d => !d.deleted) : []; }
 };
 
 /* ---------- session time-out (Admin sets minutes; the database enforces the same limits) ---------- */
 const minsSet = (v, d, lo, hi) => { v = Math.round(Number(v)); return isFinite(v) && v > 0 ? Math.min(Math.max(v, lo), hi) : d; };
 function markAct() { const n = Date.now(); if (n - (markAct.t || 0) > 15000) { markAct.t = n; ls.set('dge_act', n); } }
+/* v8: stores are logged out when nothing is saved for noSaveMins (0 = off) */
+const SAVE_ACTIONS = { saveEnquiry: 1, addFollowup: 1, markConverted: 1, markLost: 1, logEscalation: 1, resolveEscalation: 1, editEnquiry: 1, waSent: 1, reopen: 1 };
+function markSave() { ls.set('dge_save', Date.now()); }
+function noSaveMins() { const v = Math.round(Number(SVC.settings && SVC.settings.noSaveMins)); return isFinite(v) && v >= 0 ? Math.min(v, 720) : 10; }
+function noSaveLeft() {   // ms left before the no-save logout, or null when it does not apply
+  if (!SVC.sess || SVC.sess.role !== 'STORE' || !SVC.settings) return null;
+  const n = noSaveMins(); if (!n) return null;
+  const last = Math.max(Number(ls.get('dge_save', 0)) || 0, Number(SVC.sess.at) || 0);
+  return last + n * 60000 - Date.now();
+}
 function sessionEnded() {
   if (!SVC.sess || !SVC.settings) return '';
-  const st = SVC.settings, idle = minsSet(st.idleMins, 30, 5, 1440), max = minsSet(st.sessionMins, 720, 30, 43200), now = Date.now();
+  const st = SVC.settings, idle = minsSet(st.idleMins, 15, 5, 1440), max = minsSet(st.sessionMins, 720, 30, 43200), now = Date.now();
   if (now - (Number(SVC.sess.at) || now) > max * 60000) return 'Session time limit reached (' + max + ' min) – please log in again.';
   const last = Math.max(Number(ls.get('dge_act', 0)) || 0, Number(SVC.sess.at) || 0);
   if (now - last > idle * 60000) return 'Logged out after ' + idle + ' min with no activity – please log in again.';
+  const ns = noSaveLeft();
+  if (ns !== null && ns <= 0) return 'Logged out – no enquiry or follow-up saved in ' + noSaveMins() + ' min. Please log in again.';
   return '';
+}
+function noSaveWarn() {   // small banner in the last 2 minutes
+  const left = S.token ? noSaveLeft() : null, el = $('#nsw');
+  if (left === null || left > 120000 || left <= 0) { if (el) el.remove(); return; }
+  const t = Math.max(0, Math.round(left / 1000)), txt = 'Save an enquiry or follow-up within ' + Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0') + ' or you will be logged out';
+  if (el) el.textContent = txt; else document.body.insertAdjacentHTML('beforeend', '<div id="nsw" role="status">' + esc(txt) + '</div>');
 }
 function endSession(msg) {
   logoutLocal(msg); closeSheet(); vLogin.msg = msg;
@@ -596,7 +637,7 @@ async function api(action, payload) {
   if (!pub && !SVC.sess) { const e = uerr('Please log in again', 'AUTH'); logoutLocal(); location.hash = '#/login'; throw e; }
   const fn = ACT[action];
   if (!fn) throw uerr('Unknown action');
-  try { return Object.assign({ ok: true }, await fn(payload)); }
+  try { const res = Object.assign({ ok: true }, await fn(payload)); if (SAVE_ACTIONS[action]) markSave(); return res; }
   catch (e) {
     if (e && e.code === 'unauthenticated') { endSession(e.message || 'Please log in again'); throw uerr(e.message || 'Please log in again', 'AUTH'); }
     if (e && /offline|unavailable|network/i.test(e.message || '')) { const x = uerr('No network. Your entries are safe – try again.', 'NET'); throw x; }
@@ -661,7 +702,7 @@ const ACT = {
     if (r.role === 'ADMIN' && !setup && !adminUser && (SVC.settings.adminUids || []).indexOf(SVC.uid) < 0) r.readOnlyAdmin = true;
     SVC.sess = { code, role: r.role, scope: r.scope, name: r.name, at: Date.now(), gps, readOnlyAdmin: !!r.readOnlyAdmin, adminUser, setup, mustChange: pin === DEFAULT_PIN, desig,
       needRecovery: !!(SVC.db.hasRecovery && !SVC.db.hasRecovery()) };
-    ls.set('dge_sess', SVC.sess); ls.set('dge_act', Date.now());
+    ls.set('dge_sess', SVC.sess); ls.set('dge_act', Date.now()); markSave();
     return { user: profile() };
   },
   async bootstrap() {
@@ -743,7 +784,7 @@ const ACT = {
     const adminUser = !!(u && u.role === 'ADMIN');
     if (r.role === 'ADMIN' && !adminUser && (SVC.settings.adminUids || []).indexOf(SVC.uid) < 0) r.readOnlyAdmin = true;
     SVC.sess = { code, role: r.role, scope: r.scope, name: r.name, at: Date.now(), gps, readOnlyAdmin: !!r.readOnlyAdmin, adminUser, setup: false, mustChange: false, needRecovery: false, desig };
-    ls.set('dge_sess', SVC.sess); ls.set('dge_act', Date.now());
+    ls.set('dge_sess', SVC.sess); ls.set('dge_act', Date.now()); markSave();
     return { user: profile() };
   },
   async authLog(p) {
@@ -873,7 +914,36 @@ const ACT = {
     const csv = [cols.map(c => c[0]).join(',')].concat(r.raw.map(e => cols.map(c => esc(c[1] === 'mobile' && !full ? maskMob(e.mobile) : c[1] === 'isHot' ? (e.isHot ? 'Y' : 'N') : e[c[1]])).join(','))).join('\n');
     return { csv, rows: r.raw.length };
   },
-  async adminSave(p) { return adminSave(p); }
+  async adminSave(p) { return adminSave(p); },
+  /* ---------- v8 ---------- */
+  async editEnquiry(p) { return editEnquiry(p); },
+  async deleteEnquiry(p) {
+    if (SVC.sess.role !== 'ADMIN' || !SVC.isAdminDevice()) throw uerr('Only Admin can delete an enquiry', 'FORBIDDEN');
+    const id = clip(p.id, 40), reason = clip(p.reason, 300);
+    if (reason.length < 5) throw uerr('Give a reason (at least 5 letters)');
+    await SVC.db.delEnquiry(id, reason);
+    delete SVC.recent[id];
+    if (SVC.cache && SVC.cache.docs && SVC.cache.docs[id]) { delete SVC.cache.docs[id]; await KV.set(SVC.cacheKey, SVC.cache); }
+    return { deleted: id };
+  },
+  /* customer WhatsApp sent – noted in the journey (not counted as a follow-up) */
+  async waSent(p) {
+    const e = await getRaw(p.id);
+    await SVC.db.update('enquiries', e.id, stamp({ acts: TOK.union(act('WA_SENT', { note: clip(p.note, 120) || 'Product details sent on WhatsApp' })) }));
+    return {};
+  },
+  async adminSessions() {
+    if (SVC.sess.role !== 'ADMIN') throw uerr('Admin only', 'FORBIDDEN');
+    return await SVC.db.adminSessions();
+  },
+  async forceLogout(p) {
+    if (SVC.sess.role !== 'ADMIN' || !SVC.isAdminDevice()) throw uerr('Admin only', 'FORBIDDEN');
+    return await SVC.db.forceLogout(clip(p.sid, 12), clip(p.code, 30).toUpperCase());
+  },
+  async auditList(p) {
+    if (SVC.sess.role !== 'ADMIN') throw uerr('Admin only', 'FORBIDDEN');
+    return await SVC.db.auditList(clip(p.store, 12).toUpperCase(), clip(p.action, 10), Math.min(Number(p.limit) || 500, 2000));
+  }
 };
 
 function profile() {
@@ -928,24 +998,21 @@ function quotaCard(storeCode) {
 }
 async function refreshOne(id) { /* v4: local copy already patched by applyLocal – no re-read */ }
 
-async function saveEnquiry(p) {
-  const sess = SVC.sess, scope = {}; SVC.scopeStores().forEach(s => scope[s.code] = s);
-  const storeCode = sess.role === 'STORE' ? sess.scope : clip(p.storeCode, 12).toUpperCase();
-  const store = scope[storeCode]; if (!store) throw uerr('You cannot create enquiries for this store', 'FORBIDDEN');
-  capCheck(storeCode, 'enq');
-  if (sess.readOnlyAdmin) throw uerr('This device is not registered as Admin');
-  const c = p.customer || {};
+/* v8: shared by New and Edit */
+function custFields(c) {
+  c = c || {};
   const name = clip(c.name, 80); if (name.length < 2) throw uerr('Customer name is required');
   const mobile = normMobile(c.mobile);
   const type = must(c.type, LIST.custTypes, 'Customer type');
   const company = clip(c.company, 100); if (type === 'Corporate' && !company) throw uerr('Company name is required for Corporate customers');
   const gstin = clip(c.gstin, 15).toUpperCase(); if (gstin && !GSTIN_RE.test(gstin)) throw uerr('GSTIN format is wrong – leave it blank if not available');
-  let capturedBy = clip(p.capturedBy, 60); if (!capturedBy) throw uerr('Captured by (staff name) is required');
-  if (sess.desig && capturedBy.indexOf('(' + sess.desig + ')') < 0) capturedBy = clip(capturedBy + ' (' + sess.desig + ')', 72);
-  if (!Array.isArray(p.lines) || !p.lines.length) throw uerr('Add at least one product');
-  if (p.lines.length > 25) throw uerr('Maximum 25 products per enquiry');
+  return { customerName: name, mobile, customerType: type, company: type === 'Individual' ? '' : company, gstRequired: type !== 'Individual' && c.gstRequired ? 'Yes' : 'No', gstin, city: clip(c.city, 40), consent: c.consent ? 'Yes' : 'No' };
+}
+function buildLines(pl) {
+  if (!Array.isArray(pl) || !pl.length) throw uerr('Add at least one product');
+  if (pl.length > 25) throw uerr('Maximum 25 products per enquiry');
   const pm = {}; SVC.products.forEach(x => pm[x.id] = x);
-  const lines = p.lines.map((l, i) => {
+  return pl.map((l, i) => {
     const qty = Number(l.qty); if (!(qty >= 1 && qty <= 100000 && Math.floor(qty) === qty)) throw uerr('Quantity (line ' + (i + 1) + ') must be a whole number');
     let est = (l.unitPrice === '' || l.unitPrice === undefined || l.unitPrice === null) ? null : Number(l.unitPrice);
     if (est !== null && !(est >= 0 && est <= 1e7)) throw uerr('Estimated price is not valid');
@@ -964,37 +1031,95 @@ async function saveEnquiry(p) {
     r.qty = qty; r.unitPrice = est; r.value = Math.round(qty * est); r.lineNo = i + 1;
     return r;
   });
+}
+function lineTotals(lines) {
+  const qty = lines.reduce((a, l) => a + l.qty, 0), val = lines.reduce((a, l) => a + l.value, 0);
+  const cats = {}; lines.forEach(l => { const k = catKey(l.cat); cats[k] = (cats[k] || 0) + l.value; });
+  return { qty, val, cats, hot: qty >= Number(SVC.settings.hotQty) || val >= Number(SVC.settings.hotValue),
+    summary: lines[0].name + ' × ' + lines[0].qty + (lines.length > 1 ? ' +' + (lines.length - 1) + ' more' : '') };
+}
+
+async function saveEnquiry(p) {
+  const sess = SVC.sess, scope = {}; SVC.scopeStores().forEach(s => scope[s.code] = s);
+  const storeCode = sess.role === 'STORE' ? sess.scope : clip(p.storeCode, 12).toUpperCase();
+  const store = scope[storeCode]; if (!store) throw uerr('You cannot create enquiries for this store', 'FORBIDDEN');
+  capCheck(storeCode, 'enq');
+  if (sess.readOnlyAdmin) throw uerr('This device is not registered as Admin');
+  const cf = custFields(p.customer), type = cf.customerType;
+  let capturedBy = clip(p.capturedBy, 60); if (!capturedBy) throw uerr('Captured by (staff name) is required');
+  if (sess.desig && capturedBy.indexOf('(' + sess.desig + ')') < 0) capturedBy = clip(capturedBy + ' (' + sess.desig + ')', 72);
+  const lines = buildLines(p.lines);
   const today = SVC.today();
   const exp = dateOk(p.expectedDate, true, 'Expected purchase date');
   let next = dateOk(p.nextFollowUp, true, 'Next follow-up') || addDays(today, 1);
   if (daysBetween(today, next) < 0) throw uerr('Next follow-up cannot be in the past');
-  const qty = lines.reduce((a, l) => a + l.qty, 0), val = lines.reduce((a, l) => a + l.value, 0);
-  const hot = qty >= Number(SVC.settings.hotQty) || val >= Number(SVC.settings.hotValue);
+  const T = lineTotals(lines), qty = T.qty, val = T.val, hot = T.hot, cats = T.cats;
   // duplicate-submit guard (same device, same request id)
   const reqKey = 'dge_req_' + p.clientReqId;
   const prev = ls.get(reqKey, null); if (prev) return { enquiryId: prev, duplicate: true };
   const id = 'DW-' + storeCode + '-' + today.slice(5).replace('-', '') + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
-  const cats = {}; lines.forEach(l => { const k = catKey(l.cat); cats[k] = (cats[k] || 0) + l.value; });
   const priority = LIST.priorities.indexOf(p.priority) >= 0 ? p.priority : 'Normal';
-  const doc = {
+  const doc = Object.assign({
     id, storeCode, storeName: store.name, amCode: store.amCode, amName: store.am, zfm: store.zfm, zone: zoneKey(store.zfm),
-    createdAt: istNowIso(), createdDate: today, capturedBy, capturedDesig: sess.desig || '', createdBy: sess.code, deviceUid: SVC.uid,
-    customerName: name, mobile, customerType: type, company: type === 'Individual' ? '' : company, gstRequired: c.gstRequired ? 'Yes' : 'No', gstin, city: clip(c.city, 40),
-    consent: c.consent ? 'Yes' : 'No', consentAt: c.consent ? istNowIso() : '',
+    createdAt: istNowIso(), createdDate: today, capturedBy, capturedDesig: sess.desig || '', createdBy: sess.code, deviceUid: SVC.uid }, cf, {
+    consentAt: cf.consent === 'Yes' ? istNowIso() : '',
     expectedPurchaseDate: exp, intendedUse: LIST.uses.indexOf(p.intendedUse) >= 0 ? p.intendedUse : (type === 'Individual' ? 'Family Gifting' : 'Corporate Gifting'),
-    productSummary: lines[0].name + ' × ' + lines[0].qty + (lines.length > 1 ? ' +' + (lines.length - 1) + ' more' : ''),
+    productSummary: T.summary,
     totalQty: qty, estValue: val, isHot: hot, status: 'New', priority: hot && priority === 'Normal' ? 'High' : priority,
     nextFollowUp: next, lastContactAt: '', lastOutcome: '', followupCount: 0, escalationStatus: '', lastEscalationAt: '', lastEscalationTo: '', escGroup: '',
     saleValue: 0, saleQty: 0, billNo: '', saleDate: '', lostReason: '', lostDate: '', remarks: clip(p.remarks, 300),
     lines, cats, acts: [act('CREATED', { note: 'Enquiry captured by ' + capturedBy, next })], updatedAt: TOK.now(), updatedBy: sess.code
-  };
+  });
   const statExtra = { cat: {}, typ: { [type]: { n: TOK.inc(1), v: TOK.inc(val) } } };
   Object.keys(cats).forEach(k => statExtra.cat[k] = TOK.inc(cats[k]));
   await SVC.db.batch([{ t: 'set', col: 'enquiries', id, data: doc },
-    statOp(doc, today, Object.assign({ e: 1, v: val }, hot ? { h: 1 } : {}, type !== 'Individual' ? { b: 1 } : {}, c.gstRequired ? { g: 1 } : {}), statExtra)]);
+    statOp(doc, today, Object.assign({ e: 1, v: val }, hot ? { h: 1 } : {}, type !== 'Individual' ? { b: 1 } : {}, cf.gstRequired === 'Yes' ? { g: 1 } : {}), statExtra)]);
   ls.set(reqKey, id);
   await refreshOne(id);
   return { enquiryId: id, isHot: hot, estValue: val, totalQty: qty, nextFollowUp: next };
+}
+
+/* v8: edit an open enquiry – reason required, shown in the journey and in Admin › Edit & delete log */
+const EDIT_LABEL = { customerName: 'Name', mobile: 'Mobile', customerType: 'Customer type', company: 'Company', gstRequired: 'GST invoice', gstin: 'GSTIN', city: 'City', consent: 'Promo consent',
+  lines: 'Products', expectedPurchaseDate: 'Purchase date', nextFollowUp: 'Next follow-up', priority: 'Priority', intendedUse: 'Intended use', remarks: 'Remarks' };
+async function editEnquiry(p) {
+  const e = await loadForUpdate(p.id);
+  if (SVC.sess.readOnlyAdmin) throw uerr('This device is not registered as Admin');
+  const reason = clip(p.reason, 200); if (reason.length < 5) throw uerr('Give a reason for the change (at least 5 letters)');
+  const cf = custFields(p.customer), lines = buildLines(p.lines), T = lineTotals(lines), today = SVC.today();
+  const exp = dateOk(p.expectedDate, true, 'Expected purchase date');
+  const next = dateOk(p.nextFollowUp, true, 'Next follow-up') || e.nextFollowUp || addDays(today, 1);
+  if (next !== e.nextFollowUp && daysBetween(today, next) < 0) throw uerr('Next follow-up cannot be in the past');
+  const want = Object.assign({}, cf, { expectedPurchaseDate: exp, nextFollowUp: next,
+    priority: LIST.priorities.indexOf(p.priority) >= 0 ? p.priority : e.priority,
+    intendedUse: LIST.uses.indexOf(p.intendedUse) >= 0 ? p.intendedUse : e.intendedUse, remarks: clip(p.remarks, 300) });
+  const ch = {}, fields = [];
+  Object.keys(want).forEach(k => { if (String(want[k] === undefined ? '' : want[k]) !== String(e[k] === undefined ? '' : e[k])) { ch[k] = want[k]; if (EDIT_LABEL[k]) fields.push(EDIT_LABEL[k]); } });
+  const sig = l => (l || []).map(x => [x.productId, x.name, x.cat, x.qty, x.unitPrice].join('|')).join('~');
+  const linesCh = sig(lines) !== sig(e.lines);
+  if (linesCh) { Object.assign(ch, { lines, cats: T.cats, totalQty: T.qty, estValue: T.val, isHot: T.hot, productSummary: T.summary }); fields.push('Products'); }
+  if (ch.consent) ch.consentAt = ch.consent === 'Yes' ? istNowIso() : '';
+  if (!fields.length) throw uerr('Nothing changed');
+  ch.acts = TOK.union(act('EDITED', { note: reason, fields: fields.join(', ') }));
+  const ops = [{ t: 'update', col: 'enquiries', id: e.id, data: stamp(ch) }];
+  // keep dashboards right: move the difference on the capture day
+  const oldB = e.customerType !== 'Individual', newB = cf.customerType !== 'Individual';
+  const si = {}, dv = (linesCh ? T.val : Number(e.estValue) || 0) - (Number(e.estValue) || 0);
+  if (dv) si.v = dv;
+  const dh = (linesCh ? (T.hot ? 1 : 0) - (e.isHot ? 1 : 0) : 0); if (dh) si.h = dh;
+  if (newB !== oldB) si.b = newB ? 1 : -1;
+  const dg = (cf.gstRequired === 'Yes' ? 1 : 0) - (e.gstRequired === 'Yes' ? 1 : 0); if (dg) si.g = dg;
+  const extra = {};
+  if (linesCh) {
+    const cat = {}; Object.keys(e.cats || {}).forEach(k => cat[k] = (cat[k] || 0) - (Number(e.cats[k]) || 0)); Object.keys(T.cats).forEach(k => cat[k] = (cat[k] || 0) + T.cats[k]);
+    Object.keys(cat).forEach(k => { if (cat[k]) { extra.cat = extra.cat || {}; extra.cat[k] = TOK.inc(cat[k]); } });
+  }
+  const newVal = linesCh ? T.val : Number(e.estValue) || 0;
+  if (cf.customerType !== e.customerType) extra.typ = { [e.customerType]: { n: TOK.inc(-1), v: TOK.inc(-(Number(e.estValue) || 0)) }, [cf.customerType]: { n: TOK.inc(1), v: TOK.inc(newVal) } };
+  else if (dv) extra.typ = { [e.customerType]: { v: TOK.inc(dv) } };
+  if (Object.keys(si).length || Object.keys(extra).length) ops.push(statOp(e, e.createdDate, si, extra));
+  await SVC.db.batch(ops);
+  return { edited: fields };
 }
 
 /* ---------- reading ---------- */
@@ -1009,13 +1134,18 @@ const VIEWS = {
   hot: e => e.isHot && !!OPEN[e.status], due: (e, t) => ['overdue', 'today'].indexOf(dueState(e, t)) >= 0, overdue: (e, t) => dueState(e, t) === 'overdue', escalated: e => e.escalationStatus === 'Open' && !!OPEN[e.status]
 };
 async function listEnquiries(p) {
-  const today = SVC.today(), view = VIEWS[p.view] ? p.view : 'all', sess = SVC.sess;
+  const today = SVC.today(), sess = SVC.sess; let view = VIEWS[p.view] ? p.view : 'all';
   let rows;
   if (sess.role === 'STORE' || sess.role === 'AM') {
     await SVC.sync(); rows = SVC.cachedRows();
   } else {
     const zw = sess.role === 'ZFM' ? [['zfm', '==', sess.scope]] : [];
+    // v8: search every store by enquiry ID or 10-digit mobile (indexed – cheap)
+    const qq = clip(p.q, 40).trim(), qm = normMob(qq), qid = qq.toUpperCase();
+    const isId = /^DW-[A-Z0-9_-]+-\d{4}-[A-Z0-9]{2,6}$/.test(qid);
     if (p.am || p.storeCode) { const am = p.am || (SVC.storeMap[String(p.storeCode).toUpperCase()] || {}).amCode; if (!am) throw uerr('Store not found'); await SVC.sync(false, 'amCode', am); rows = SVC.cachedRows(); }
+    else if (isId) { const one = await SVC.db.get('enquiries', qid).catch(() => null); rows = one && !one.deleted ? [one] : []; p = Object.assign({}, p, { q: '' }); view = 'all'; }
+    else if (qm) { rows = (await SVC.db.query('enquiries', { where: zw.concat([['mobile', '==', qm]]), limit: 50 })).filter(e => !e.deleted); p = Object.assign({}, p, { q: '' }); view = 'all'; }
     else if (view === 'hot') rows = await SVC.db.query('enquiries', { where: zw.concat([['isHot', '==', true], ['status', 'in', ['New', 'Follow-up']]]), orderBy: ['estValue', 'desc'], limit: 100 });
     else if (view === 'overdue' || view === 'due') rows = await SVC.db.query('enquiries', { where: zw.concat([['status', 'in', ['New', 'Follow-up']], ['nextFollowUp', view === 'due' ? '<=' : '<', today]]), orderBy: ['nextFollowUp', 'asc'], limit: 100 });
     else if (view === 'escalated') rows = await SVC.db.query('enquiries', { where: zw.concat([['escalationStatus', '==', 'Open']]), limit: 100 });
@@ -1038,12 +1168,15 @@ async function getEnquiry(id) {
   id = clip(id, 40);
   const loc = (SVC.cache && SVC.cache.docs && SVC.cache.docs[id]) || (SVC.recent[id] && Date.now() - (SVC.recent[id]._local || 0) < 120000 ? SVC.recent[id] : null);
   const e = loc || await SVC.db.get('enquiries', id); if (!e) throw uerr('Enquiry not found', 'NOTFOUND');
+  if (e.deleted) { if (SVC.cache && SVC.cache.docs) SVC.cache.docs[id] = e; throw uerr('Enquiry ' + id + ' was deleted by Admin' + (e.deleteReason ? ' – ' + e.deleteReason : '') + '.', 'NOTFOUND'); }
   await getRaw(e.id); if (!loc) { SVC.recent[id] = e; SVC.putLocal(e); }
   const d = lite(e, SVC.today());
   Object.assign(d, { mobileFull: e.mobile, city: e.city, gstin: e.gstin, consent: e.consent, use: e.intendedUse, capturedBy: e.capturedBy, lastContactAt: e.lastContactAt, lastOutcome: e.lastOutcome,
-    followups: Number(e.followupCount) || 0, saleQty: e.saleQty, billNo: e.billNo, saleDate: e.saleDate, lostReason: e.lostReason, lostDate: e.lostDate, remarks: e.remarks, lastEscAt: e.lastEscalationAt, lastEscTo: e.lastEscalationTo });
+    followups: Number(e.followupCount) || 0, saleQty: e.saleQty, billNo: e.billNo, saleDate: e.saleDate, lostReason: e.lostReason, lostDate: e.lostDate, remarks: e.remarks, lastEscAt: e.lastEscalationAt, lastEscTo: e.lastEscalationTo,
+    customerType: e.customerType, gstReq: e.gstRequired === 'Yes', consentYes: e.consent === 'Yes', intendedUse: e.intendedUse || '', priorityRaw: e.priority || 'Normal' });
   const acts = (e.acts || []).slice().sort((a, b) => String(a.at).localeCompare(String(b.at)));
-  return { enquiry: d, lines: (e.lines || []).map(l => Object.assign({}, l, { codes: l.codes || '' })), activity: acts, canReopen: SVC.sess.role !== 'STORE' };
+  return { enquiry: d, lines: (e.lines || []).map(l => Object.assign({}, l, { codes: l.codes || '' })), activity: acts, canReopen: SVC.sess.role !== 'STORE',
+    canEdit: !!OPEN[e.status] && !SVC.sess.readOnlyAdmin, canDelete: SVC.sess.role === 'ADMIN' && SVC.isAdminDevice() };
 }
 
 /* ---------- dashboards ---------- */
@@ -1188,7 +1321,8 @@ async function adminSave(p) {
   const ver = Date.now();
   if (p.settings) {
     const s = p.settings, cur = SVC.settings;
-    const out = { capEnq: Math.min(500, Math.max(1, Number(s.capEnq) || 60)), capAct: Math.min(1000, Math.max(1, Number(s.capAct) || 150)), capRefresh: Math.min(500, Math.max(5, Number(s.capRefresh) || 30)), radiusKm: Math.min(50, Math.max(0.1, Number(s.radiusKm) || 3)), idleMins: minsSet(s.idleMins, 30, 5, 1440), sessionMins: minsSet(s.sessionMins, 720, 30, 43200), testMode: !!s.testMode, hotQty: Math.max(1, Number(s.hotQty) || 20), hotValue: Math.max(1, Number(s.hotValue) || 25000),
+    const out = { capEnq: Math.min(500, Math.max(1, Number(s.capEnq) || 60)), capAct: Math.min(1000, Math.max(1, Number(s.capAct) || 150)), capRefresh: Math.min(500, Math.max(5, Number(s.capRefresh) || 30)), radiusKm: Math.min(50, Math.max(0.1, Number(s.radiusKm) || 3)), idleMins: minsSet(s.idleMins, 15, 5, 1440), sessionMins: minsSet(s.sessionMins, 720, 30, 43200),
+      noSaveMins: (v => !isFinite(v) || v < 0 ? 10 : v === 0 ? 0 : Math.min(Math.max(v, 2), 720))(Math.round(Number(s.noSaveMins))), snapRoles: ['ADMIN', 'ADMIN_HO', 'ALL'].indexOf(s.snapRoles) >= 0 ? s.snapRoles : 'ADMIN', testMode: !!s.testMode, hotQty: Math.max(1, Number(s.hotQty) || 20), hotValue: Math.max(1, Number(s.hotValue) || 25000),
       l2AfterHours: Math.max(1, Number(s.l2AfterHours) || 2), diwaliDate: dateOk(s.diwaliDate, false, 'Diwali date'), seasonStart: dateOk(s.seasonStart, false, 'Season start'),
       bulkContact: clip(s.bulkContact, 30), catalogueUrl: clip(s.catalogueUrl, 200),
       adminCodes: splitCodes(s.adminCodes), hoCodes: splitCodes(s.hoCodes), adminUids: splitCodes(s.adminUids, true), mastersVersion: cur.mastersVersion || 0 };
@@ -1236,12 +1370,13 @@ function route() {
   const [path, qs] = h.split('?');
   const parts = path.split('/');
   const q = new URLSearchParams(qs || '');
-  window.scrollTo(0, 0);
+  window.scrollTo(0, 0); closeSheet();
   if (!S.token && parts[0] !== 'login') { location.hash = '#/login'; return; }
   if (S.token && SVC.sess && (SVC.sess.mustChange || SVC.sess.needRecovery) && parts[0] !== 'pin' && parts[0] !== 'login') { location.hash = '#/pin'; return; }
-  const v = { login: vLogin, home: vHome, new: vNew, list: vList, enq: vEnq, esc: vEsc, dash: vDash, admin: vAdmin, pin: vPin, pins: vPins, logins: vLogins }[parts[0]];
+  const v = { login: vLogin, home: vHome, new: vNew, list: vList, enq: vEnq, esc: vEsc, dash: vDash, admin: vAdmin, pin: vPin, pins: vPins, logins: vLogins,
+    edit: vEdit, wa: vWa, sessions: vSessions, audit: vAudit }[parts[0]];
   if (!v) { location.hash = S.token ? (isMgr() ? '#/dash' : '#/home') : '#/login'; return; }
-  Promise.resolve(v(parts[1] ? decodeURIComponent(parts[1]) : '', q)).then(() => { if (parts[0] === 'dash') pinBanner(); }).catch(e => { if (e.code !== 'AUTH') { root.innerHTML = '<div class="app"><div class="empty">' + esc(e.message) + '<br><br><a href="#/home">Go home</a></div></div>'; } });
+  Promise.resolve(v(parts[1] ? decodeURIComponent(parts[1]) : '', q)).then(() => { enhance(); if (parts[0] === 'dash') pinBanner(); }).catch(e => { if (e.code !== 'AUTH') { root.innerHTML = '<div class="app"><div class="empty">' + esc(e.message) + '<br><br><a href="#/home">Go home</a></div></div>'; } });
 }
 window.addEventListener('hashchange', route);
 function loading(wide) { root.innerHTML = '<div class="app' + (wide ? ' wide' : '') + '"><div class="spin"></div></div>'; }
@@ -1275,7 +1410,7 @@ async function vLogin() {
     '<h1 class="serif" style="margin:0;font-size:40px;line-height:1.05;color:#fff">Every gifting<br>walk-in is a<br><span style="color:#F2D18B">lead.</span></h1></div>' +
     '<div style="display:flex;gap:10px"><div class="lchip"><b>' + dToDiwali() + '</b><span>to Diwali</span></div><a class="lchip" href="https://qr1.be/XCLN" target="_blank" rel="noopener" style="flex:1.4"><b>Catalogue</b><span>Open festive gifting guide ↗</span></a></div></div>' +
     '<form class="lform" id="lf" autocomplete="on" novalidate>' +
-    '<div class="field"><label for="uid">Store code / Employee code</label><input class="in" id="uid" name="username" autocapitalize="characters" autocomplete="username" required style="font-weight:800;text-transform:uppercase;font-size:20px;letter-spacing:1px" placeholder="HJ04"></div>' +
+    '<div class="field"><label for="uid" id="uidl">Store code</label><input class="in" id="uid" name="username" autocapitalize="characters" autocomplete="username" required style="font-weight:800;text-transform:uppercase;font-size:20px;letter-spacing:1px" placeholder="HJ04"></div>' +
     '<div class="field" id="dsg-f" style="display:none"><label for="dsg">Your designation *</label><select class="in" id="dsg"><option value="">Select…</option>' + DESIGNATIONS.map(d => '<option>' + d + '</option>').join('') + '</select></div>' +
     '<div class="field"><label for="pin" style="display:flex;justify-content:space-between">6-digit PIN <a href="#" id="fpin" style="font-weight:700;color:var(--maroon,#5A0D24)">Forgot PIN?</a></label><input class="in" id="pin" name="password" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="current-password" required style="font-weight:800;font-size:20px;letter-spacing:8px" placeholder="••••••"></div>' +
     '<div id="fpbox" class="stack" style="display:none;gap:12px">' +
@@ -1286,26 +1421,49 @@ async function vLogin() {
       '<div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:700"><a href="#" id="fpback">← Back to login</a><a href="#" id="fpreq">No registered mobile? Ask Central Ops</a></div></div>' +
     '<p class="ferr" id="lerr" role="alert" style="margin:0">' + esc(msg) + '</p>' +
     '<button class="btn btn-d w100" id="lbtn" type="submit">Enter <span style="color:#F2D18B">→</span></button>' +
+    '<a href="#" class="lmode" id="lmode">AM / ZFM / HO login →</a>' +
     '<span id="lhint" style="font-size:12px;color:var(--muted);text-align:center">Connecting…</span>' +
     (DEMO ? '<div class="demo-note"><b>Demo mode</b> – sample data in this browser only (GPS check off).<br>Store <b>HJ04</b> · AM <b>AM01</b> · Zone <b>ZFM-ZONE1</b> · HO <b>HO-DEMO</b> · <b>ADMIN</b> · first PIN <b>' + DEFAULT_PIN + '</b> &nbsp;<a href="#" id="dreset">Reset demo data</a></div>' : '') +
     '</form></div>';
   const last = ls.get('dge_uid', ''); if (last) $('#uid').value = last;
   const lastD = ls.get('dge_desig', ''); if (lastD) $('#dsg').value = lastD;
   const isStoreCode = c => !!(SVC.storeMap && SVC.storeMap[c]);
-  const showD = () => { $('#dsg-f').style.display = isStoreCode($('#uid').value.trim().toUpperCase()) ? '' : 'none'; };
-  $('#uid').addEventListener('input', showD);
+  /* v8: store login shows only "Store code"; AM / ZFM / HO / Admin switch with the link */
+  const getMode = () => ls.get('dge_lmode', 'store') === 'emp' ? 'emp' : 'store';   // one source of truth (screen may render twice)
+  const setMode = m => {
+    ls.set('dge_lmode', m);
+    $('#uidl').textContent = m === 'store' ? 'Store code' : 'Employee code';
+    $('#uid').placeholder = m === 'store' ? 'HJ04' : 'e.g. 6025872';
+    $('#dsg-f').style.display = m === 'store' ? '' : 'none';
+    $('#lmode').textContent = m === 'store' ? 'AM / ZFM / HO login →' : '← Store login';
+    $('#lmode').style.display = SVC.settings && !SVC.settingsExists ? 'none' : '';
+    const st = SVC.settings;
+    if (st && SVC.settingsExists) $('#lhint').innerHTML = m === 'store'
+      ? 'Store staff: store code + PIN (GPS — within ' + esc(st.radiusKm) + ' km of the store' + (st.testMode ? ', <b>test mode ON</b>' : '') + '). First login: default PIN from Central Ops, then set your own.'
+      : 'AM: AM code · Zone: ZFM-&lt;name&gt; · HO / Admin: your employee code. First login: default PIN, then set your own.';
+  };
+  $('#lmode').onclick = e => { e.preventDefault(); setMode(getMode() === 'store' ? 'emp' : 'store'); $('#lerr').textContent = ''; $('#uid').focus(); };
+  setMode(getMode());
+  /* the code must match the chosen login */
+  const codeErr = code => {
+    if (!SVC.settingsExists) return '';
+    const mode = getMode();
+    if (mode === 'store' && !isStoreCode(code)) return SVC.resolveCode(code) ? 'This is not a store code. AM / ZFM / HO: tap “AM / ZFM / HO login” below.' : NOT_IN_MASTER;
+    if (mode === 'emp' && isStoreCode(code)) return 'That is a store code – tap “Store login” below.';
+    return '';
+  };
   if ($('#dreset')) $('#dreset').onclick = async e => { e.preventDefault(); await SVC.init(); SVC.db.reset(); location.reload(); };
   try {
     await SVC.init();
     const st = SVC.settings;
-    showD();
-    $('#lhint').innerHTML = !SVC.settingsExists ? '<b style="color:var(--amber2)">First-time setup:</b> enter your employee code + the default PIN to become Admin.' :
-      'Store staff: store code (GPS — within ' + esc(st.radiusKm) + ' km of the store' + (st.testMode ? ', <b>test mode ON</b>' : '') + '). AM / HO: employee code. First login: default PIN from Central Ops, then set your own.';
+    if (!SVC.settingsExists) { setMode('emp'); $('#lhint').innerHTML = '<b style="color:var(--amber2)">First-time setup:</b> enter your employee code + the default PIN to become Admin.'; }
+    else setMode(getMode());
   } catch (e) { $('#lhint').innerHTML = '<span class="ferr">Could not connect to database: ' + esc(e.message) + '</span>'; }
   $('#lf').onsubmit = async e => {
     e.preventDefault();
     const code = $('#uid').value.trim().toUpperCase(), pin = $('#pin').value.trim();
-    if (!code) { $('#lerr').textContent = 'Enter your store code or employee code'; return; }
+    if (!code) { $('#lerr').textContent = getMode() === 'store' ? 'Enter your store code' : 'Enter your employee code'; return; }
+    const ce = codeErr(code); if (ce) { $('#lerr').textContent = ce; return; }
     if (!/^[0-9]{6}$/.test(pin)) { $('#lerr').textContent = 'Enter your 6-digit PIN'; return; }
     const desig = isStoreCode(code) ? $('#dsg').value : '';
     if (isStoreCode(code) && !desig) { $('#lerr').textContent = 'Select your designation'; return; }
@@ -1329,7 +1487,8 @@ async function vLogin() {
   $('#fpback').onclick = e => { e.preventDefault(); fpMode(false); };
   $('#fpbtn').onclick = async () => {
     const code = $('#uid').value.trim().toUpperCase(), mob = $('#fpmob').value.trim(), a = $('#fp1').value.trim(), a2 = $('#fp2').value.trim();
-    if (!code) { $('#lerr').textContent = 'Type your store code / employee code above'; return; }
+    if (!code) { $('#lerr').textContent = getMode() === 'store' ? 'Type your store code above' : 'Type your employee code above'; return; }
+    const ce = codeErr(code); if (ce) { $('#lerr').textContent = ce; return; }
     const desig = isStoreCode(code) ? $('#dsg').value : '';
     if (isStoreCode(code) && !desig) { $('#lerr').textContent = 'Select your designation'; return; }
     if (!/^[0-9]{6}$/.test(a)) { $('#lerr').textContent = 'New PIN must be exactly 6 digits'; return; }
@@ -1376,6 +1535,7 @@ async function vHome() {
     '<div class="fbar">' + seg(f.converted, 'var(--green)') + seg(f.inFollowup, 'var(--gold)') + seg(f.newCount, '#E8D5A8') + seg(f.lost, 'var(--red)') + '</div>' +
     '<div class="legend"><span><i style="background:var(--green)"></i>Won ' + f.converted + '</span><span><i style="background:var(--gold)"></i>In follow-up ' + f.inFollowup + '</span><span><i style="background:#E8D5A8"></i>New ' + f.newCount + '</span><span><i style="background:var(--red)"></i>Lost ' + f.lost + '</span></div></div></div>' +
     '<div style="padding:16px 16px 0"><a class="cta" href="#/new">' + IC.plus + 'Capture new enquiry</a></div>' +
+    '<form id="hsf" style="padding:12px 16px 0;display:flex;gap:8px" role="search"><input class="in" id="hsq" type="search" placeholder="Search name, mobile, enquiry ID…" aria-label="Search enquiries" style="height:44px"><button class="btn btn-o" type="submit" style="height:44px">Search</button></form>' +
     (dueN ? '<a class="alert" href="#/list?view=due"><div class="ic">' + IC.clock + '</div><div class="stack" style="gap:2px"><b>' + dueN + ' follow-up' + (dueN > 1 ? 's' : '') + ' due · ' + shortInr(k.dueTodayValue + k.overdueValue) + ' at stake</b><span>' + (k.overdue ? k.overdue + ' overdue. ' : '') + 'Call before 6 PM.</span></div></a>'
       : '<div class="alert ok"><div class="ic">' + IC.check + '</div><div class="stack" style="gap:2px"><b>No follow-ups pending today</b><span>Great discipline – keep capturing every walk-in.</span></div></div>') +
     (k.escalationsOpen ? '<a class="alert" href="#/list?view=escalated" style="background:#FFF1EA;border-color:#F7C9B0"><div class="ic" style="background:#EA580C">' + IC.up + '</div><div class="stack" style="gap:2px"><b style="color:#9A3412">' + k.escalationsOpen + ' escalation' + (k.escalationsOpen > 1 ? 's' : '') + ' waiting for buyer reply</b><span>Mark them resolved once the buyer responds.</span></div></a>' : '') +
@@ -1390,6 +1550,7 @@ async function vHome() {
     '<p style="text-align:center;font-size:12px;color:var(--muted);padding:18px 16px 0">Bulk orders helpline ' + esc(S.boot.config.bulkContact) + ' · <a href="' + esc(S.boot.config.catalogueUrl) + '" target="_blank" rel="noopener">Catalogue ↗</a></p>' +
     navb('home', dueN) + '</div>';
   $('#menu').onclick = userMenu;
+  $('#hsf').onsubmit = ev => { ev.preventDefault(); const v = $('#hsq').value.trim(); location.hash = '#/list?view=all' + (v ? '&q=' + encodeURIComponent(v) : ''); };
   if ($('#qrf')) $('#qrf').onclick = async () => { try { await api('dashboard', { period: 'season', fresh: true }); } catch (e) { toast(e.message, true); } vHome(); };
 }
 function userMenu() {
@@ -1397,7 +1558,9 @@ function userMenu() {
   sheet('<div class="stack" style="gap:4px"><b style="font-size:18px" class="serif">' + esc(u.name) + '</b><span class="mu" style="font-size:13px">' + esc(u.userId + ' · ' + u.role + (u.desig ? ' · ' + u.desig : '') + (u.storeCount > 1 ? ' · ' + u.storeCount + ' stores' : '')) + '</span></div>' +
     (u.role === 'ADMIN' ? '<a class="btn btn-o w100" href="#/admin" data-close>Admin settings &amp; masters</a>' : '') +
     (u.role === 'ADMIN' ? '<a class="btn btn-o w100" href="#/pins" data-close>PIN reset requests</a>' : '') +
+    (u.role === 'ADMIN' ? '<a class="btn btn-o w100" href="#/sessions" data-close>Sessions (who is logged in)</a>' : '') +
     (u.role === 'ADMIN' ? '<a class="btn btn-o w100" href="#/logins" data-close>Login &amp; PIN log</a>' : '') +
+    (u.role === 'ADMIN' ? '<a class="btn btn-o w100" href="#/audit" data-close>Edit &amp; delete log</a>' : '') +
     '<a class="btn btn-o w100" href="#/pin" data-close>Change my PIN</a>' +
     '<button class="btn btn-o w100" id="lo" style="color:var(--red)">Log out</button>' + (u.demo ? '<button class="btn btn-o w100" id="dr">Reset demo data</button>' : '') +
     '<span class="tag" style="text-align:center">App ' + APP_VERSION + (u.demo ? ' · demo' : '') + ' · login ' + esc(String(u.deviceUid || '').slice(0, 8)) + '</span>');
@@ -1421,13 +1584,30 @@ function newForm() {
 }
 async function vNew() {
   await ensureBoot();
-  const F = S.form = (S.form && !S.form._saved) ? S.form : newForm();
-  const b = S.boot, mgr = isMgr();
+  S.form = (S.form && !S.form._saved && !S.form.editId) ? S.form : newForm();
+  renderForm();
+}
+/* v8: edit = same form, filled from the enquiry; saving asks for a reason */
+async function vEdit(id) {
+  await ensureBoot();
+  if (!(S.form && S.form.editId === id && !S.form._saved)) {
+    loading();
+    const r = await api('getEnquiry', { id }), e = r.enquiry;
+    if (!r.canEdit) { toast('Only open enquiries can be edited', true); location.hash = '#/enq/' + encodeURIComponent(id); return; }
+    S.form = { editId: id, reqId: uuid(), storeCode: e.store, type: e.customerType || e.type, name: e.customer, mobile: e.mobileFull, origMobile: e.mobileFull, company: e.company || '', gst: !!e.gstReq, gstin: e.gstin || '', city: e.city || '', consent: !!e.consentYes,
+      cart: r.lines.map(l => ({ productId: l.productId || '', name: l.name, brand: l.brand || '', cat: l.cat, codes: l.codes || '', page: l.page || '', offer: l.offer === undefined ? '' : l.offer, mrp: l.mrp === undefined ? '' : l.mrp, qty: l.qty, unitPrice: l.unitPrice })),
+      cat: '', search: '', purchase: 'pick', expectedDate: e.expectedDate || '', nextFollowUp: e.nextFollowUp || '', priority: e.priorityRaw || 'Normal', use: e.intendedUse || '', remarks: e.remarks || '', capturedBy: e.capturedBy || '', dup: null };
+  }
+  renderForm();
+}
+function renderForm() {
+  const F = S.form, b = S.boot, mgr = isMgr(), ed = !!F.editId;
   root.innerHTML = '<div class="app" style="padding-bottom:110px">' +
-    '<div class="hdr"><div class="hrow"><a class="iconbtn" href="' + (mgr ? '#/dash' : '#/home') + '" aria-label="Back">' + IC.back + '</a><h1 class="htitle">New enquiry</h1><span style="margin-left:auto;font-size:12px;color:var(--gold2);font-weight:800">~60 sec</span></div>' +
+    '<div class="hdr"><div class="hrow"><a class="iconbtn" href="' + (ed ? '#/enq/' + encodeURIComponent(F.editId) : mgr ? '#/dash' : '#/home') + '" aria-label="Back">' + IC.back + '</a><h1 class="htitle">' + (ed ? 'Edit enquiry' : 'New enquiry') + '</h1><span style="margin-left:auto;font-size:12px;color:var(--gold2);font-weight:800">' + (ed ? esc(F.editId) : '~60 sec') + '</span></div>' +
     '<div class="prog" id="prog"><div class="on"><i></i>Customer</div><div><i></i>Products</div><div><i></i>Follow-up</div></div></div>' +
+    (ed ? '<div class="banner warn" style="margin:14px 16px 0"><span>Change what is wrong and tap <b>Save changes</b>. You will be asked for a reason – it shows in the enquiry journey and the Admin log.</span></div>' : '') +
     '<form id="nf" novalidate>' +
-    (mgr ? '<div class="card stack"><div class="field"><label for="f-store">Store</label><select class="in" id="f-store"><option value="">Select store…</option>' + b.stores.map(s => '<option value="' + esc(s.code) + '"' + (F.storeCode === s.code ? ' selected' : '') + '>' + esc(s.code + ' · ' + s.name) + '</option>').join('') + '</select></div></div>' : '') +
+    (mgr && !ed ? '<div class="card stack"><div class="field"><label for="f-store">Store</label><select class="in" id="f-store"><option value="">Select store…</option>' + b.stores.map(s => '<option value="' + esc(s.code) + '"' + (F.storeCode === s.code ? ' selected' : '') + '>' + esc(s.code + ' · ' + s.name) + '</option>').join('') + '</select></div></div>' : '') +
     '<div class="card stack" style="gap:12px"><h3>Customer</h3>' +
     '<div class="g3" role="radiogroup" aria-label="Customer type">' + [['Individual', IC.user], ['Corporate', IC.brief], ['Bulk', IC.box]].map(t => '<button type="button" class="tile' + (F.type === t[0] ? ' on' : '') + '" data-type="' + t[0] + '" role="radio" aria-checked="' + (F.type === t[0]) + '">' + t[1] + t[0] + '</button>').join('') + '</div>' +
     '<div class="field"><label for="f-name">Name *</label><input class="in" id="f-name" maxlength="80" autocomplete="off" value="' + esc(F.name) + '"></div>' +
@@ -1453,10 +1633,10 @@ async function vNew() {
     '<div class="g2"><div class="field"><label for="f-use">Intended use</label><select class="in" id="f-use"><option value="">Auto</option>' + b.lists.uses.map(x => '<option' + (F.use === x ? ' selected' : '') + '>' + esc(x) + '</option>').join('') + '</select></div>' +
     '<div class="field"><label>Priority</label><div class="chips" id="prichips">' + b.lists.priorities.map(p => '<button type="button" class="chip' + (F.priority === p ? ' on' : '') + '" data-pri="' + p + '">' + p + '</button>').join('') + '</div></div></div>' +
     '<div class="field"><label for="f-rem">Remarks <span class="opt">(optional)</span></label><textarea class="in" id="f-rem" maxlength="300" placeholder="Gift wrap, delivery, budget, customisation…">' + esc(F.remarks) + '</textarea></div>' +
-    '<div class="field"><label for="f-by">Captured by *</label><input class="in" id="f-by" maxlength="60" placeholder="Your name (remembered on this phone)" value="' + esc(F.capturedBy) + '"></div></div>' +
+    (ed ? '<span class="tag">Captured by ' + esc(F.capturedBy) + '</span></div>' : '<div class="field"><label for="f-by">Captured by *</label><input class="in" id="f-by" maxlength="60" placeholder="Your name (remembered on this phone)" value="' + esc(F.capturedBy) + '"></div></div>') +
     '</form>' +
     '<div class="foot"><div style="display:flex;flex-direction:column;min-width:96px"><span style="font-size:11px;color:var(--muted);font-weight:800" id="t-items">0 ITEMS</span><span class="serif" style="font-size:22px;font-weight:700;color:var(--m)" id="t-val">₹0</span></div>' +
-    '<button class="btn btn-d" style="flex:1" id="savebtn">Save enquiry</button></div></div>';
+    '<button class="btn btn-d" style="flex:1" id="savebtn">' + (ed ? 'Save changes' : 'Save enquiry') + '</button></div></div>';
   bindNew();
 }
 function bindNew() {
@@ -1493,6 +1673,7 @@ function bindNew() {
   mob.oninput = () => { F.mobile = mob.value; };
   mob.onblur = async () => {
     const m = normMob(F.mobile); const box = $('#dupmsg');
+    if (F.editId && m === normMob(F.origMobile)) { box.innerHTML = ''; return; }
     if (!m) { box.innerHTML = F.mobile ? '<span class="ferr">Enter a valid 10-digit mobile</span>' : ''; return; }
     try {
       const r = await api('checkMobile', { mobile: m });
@@ -1589,8 +1770,9 @@ async function saveNew() {
   if (F.gst && F.gstin.trim() && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(F.gstin.trim().toUpperCase())) bad('#f-gstin', 'GSTIN format is wrong – leave blank if not available');
   if (!F.cart.length) errs.push([$('#f-search'), 'Add at least one product']);
   F.cart.forEach((c, i) => { if (!(Number(c.qty) >= 1)) errs.push([$('[data-qty="' + i + '"]'), 'Enter quantity for ' + c.name]); });
-  if (!F.capturedBy.trim()) bad('#f-by', 'Enter your name in “Captured by”');
+  if (!F.editId && !F.capturedBy.trim()) bad('#f-by', 'Enter your name in “Captured by”');
   if (errs.length) { toast(errs[0][1], true); if (errs[0][0]) errs[0][0].scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+  if (F.editId) return saveEdit();
   const btn = $('#savebtn'); btn.disabled = true; btn.textContent = 'Saving…';
   ls.set('dge_staff', F.capturedBy.trim());
   try {
@@ -1614,6 +1796,29 @@ async function saveNew() {
   }
 }
 
+function formPayload(F) {
+  return {
+    customer: { name: F.name.trim(), mobile: normMob(F.mobile), type: F.type, company: F.type === 'Individual' ? '' : F.company.trim(), gstRequired: F.type !== 'Individual' && F.gst, gstin: F.gst ? F.gstin.trim().toUpperCase() : '', city: F.city.trim(), consent: F.consent },
+    lines: F.cart.map(c => c.productId ? { productId: c.productId, qty: Number(c.qty), unitPrice: c.unitPrice === '' ? '' : Number(c.unitPrice) } : { category: c.cat, name: c.name, brand: c.brand, code: c.codes, qty: Number(c.qty), unitPrice: c.unitPrice === '' ? '' : Number(c.unitPrice) }),
+    expectedDate: F.expectedDate, nextFollowUp: F.nextFollowUp, priority: F.priority, intendedUse: F.use, remarks: F.remarks.trim()
+  };
+}
+function saveEdit() {
+  const F = S.form;
+  sheet('<b class="serif" style="font-size:20px">Why are you changing it?</b><div class="field"><label for="er">Reason *</label><textarea class="in" id="er" maxlength="200" placeholder="e.g. Customer changed quantity / wrong mobile typed"></textarea></div>' +
+    '<button class="btn btn-d w100" id="eok">Save changes</button><button class="btn btn-o w100" data-close>Cancel</button>');
+  $('#er').focus();
+  $('#eok').onclick = async () => {
+    const why = $('#er').value.trim(); if (why.length < 5) return toast('Give a reason (at least 5 letters)', true);
+    $('#eok').disabled = true;
+    try {
+      const r = await api('editEnquiry', Object.assign({ id: F.editId, reason: why }, formPayload(F)));
+      F._saved = true; S.dash = null; closeSheet(); toast('Saved · ' + r.edited.join(', '));
+      location.hash = '#/enq/' + encodeURIComponent(F.editId);
+    } catch (x) { $('#eok').disabled = false; toast(x.message, true); }
+  };
+}
+
 /* =================== LIST =================== */
 async function vList(_, q) {
   await ensureBoot();
@@ -1624,12 +1829,15 @@ async function vList(_, q) {
   root.innerHTML = '<div class="app' + (mgr ? '' : '') + '">' +
     '<div class="hdr"><div class="hrow"><a class="iconbtn" href="' + (mgr ? '#/dash' : '#/home') + '" aria-label="Back">' + IC.back + '</a><div style="display:flex;flex-direction:column;min-width:0"><h1 class="htitle">' + (L.view === 'due' ? 'Follow-ups' : 'Enquiries') + '</h1><span class="hsub" id="lsub">' + esc(L.store ? 'Store ' + L.store : L.am ? 'AM ' + L.am : (mgr ? S.boot.user.storeCount + ' stores' : S.boot.user.storeCode)) + '</span></div>' +
     '<button class="iconbtn" id="exp" style="margin-left:auto" aria-label="Download CSV">' + IC.dl + '</button></div>' +
-    '<input class="in" id="lq" placeholder="Search name, mobile, enquiry ID, company…" style="margin-top:14px;height:44px;background:rgba(255,255,255,.95)" value="' + esc(L.q) + '" aria-label="Search enquiries"></div>' +
+    '<input class="in" id="lq" type="search" placeholder="' + (wide ? 'Enquiry ID, 10-digit mobile or store code…' : 'Search name, mobile, enquiry ID, company…') + '" style="margin-top:14px;height:44px;background:rgba(255,255,255,.95)" value="' + esc(L.q) + '" aria-label="Search enquiries"></div>' +
     '<div class="chips scroll" style="padding:14px 16px 6px">' + views.map(v => '<button class="chip' + (L.view === v[0] ? ' on' : '') + '" data-v="' + v[0] + '">' + v[1] + '</button>').join('') + '</div>' +
     '<div style="padding:4px 16px 8px;font-size:12px;color:var(--muted)" id="lmeta"></div>' +
     '<div class="rows" id="lrows"><div class="spin"></div></div><div style="padding:14px 16px" id="lmore"></div>' + (mgr ? '' : navb(L.view === 'due' ? 'fu' : 'list')) + '</div>';
   $$('[data-v]').forEach(x => x.onclick = () => { const p = new URLSearchParams({ view: x.dataset.v }); if (L.store) p.set('store', L.store); if (L.am) p.set('am', L.am); location.hash = '#/list?' + p; });
-  let t; $('#lq').oninput = e => { clearTimeout(t); t = setTimeout(() => { L.q = e.target.value; L.page = 1; L.rows = []; loadList(); }, 350); };
+  let t; $('#lq').oninput = e => { clearTimeout(t); t = setTimeout(() => {
+    const V = e.target.value.trim().toUpperCase();
+    if (wide && SVC.storeMap[V]) { location.hash = '#/list?view=open&store=' + encodeURIComponent(V); return; }
+    L.q = e.target.value; L.page = 1; L.rows = []; loadList(); }, 350); };
   $('#exp').onclick = async () => {
     try { const r = await api('exportCsv', { view: L.view, q: L.q, storeCode: L.store, am: L.am }); downloadCsv(r.csv, 'diwali-enquiries-' + L.view + '-' + todayLocal() + '.csv'); toast(r.rows + ' rows downloaded'); }
     catch (e) { toast(e.message, true); }
@@ -1659,22 +1867,23 @@ async function vEnq(id) {
   const r = S.enq = await api('getEnquiry', { id });
   const e = r.enquiry, today = S.boot.config.today, open = e.status === 'New' || e.status === 'Follow-up';
   const dleft = e.expectedDate ? daysBetween(today, e.expectedDate) : null;
-  const tlDot = t => ({ CREATED: '', FOLLOWUP: 'g', ESCALATION: 'e', ESC_RESOLVED: 'g', CONVERTED: 'gr', LOST: 'r', REOPENED: 'g' }[t] || '');
+  const tlDot = t => ({ CREATED: '', FOLLOWUP: 'g', ESCALATION: 'e', ESC_RESOLVED: 'g', CONVERTED: 'gr', LOST: 'r', REOPENED: 'g', EDITED: 'o', WA_SENT: 'gr' }[t] || '');
   const tlTxt = a => ({
     CREATED: ['Enquired in store', a.note],
     FOLLOWUP: [a.method + ' · ' + a.outcome, (a.note ? a.note + ' · ' : '') + 'next ' + dfmt(a.next)],
     ESCALATION: ['Escalated to ' + a.to + ' (' + a.level + ')', a.method + (a.outcome ? ' · ' + a.outcome : '') + (a.note ? ' · ' + a.note : '')],
-    ESC_RESOLVED: ['Buyer responded', a.note], CONVERTED: ['Converted', a.note], LOST: ['Lost · ' + a.outcome, a.note], REOPENED: ['Reopened', a.note]
+    ESC_RESOLVED: ['Buyer responded', a.note], CONVERTED: ['Converted', a.note], LOST: ['Lost · ' + a.outcome, a.note], REOPENED: ['Reopened', a.note],
+    EDITED: ['Edited · ' + (a.fields || 'details'), 'Reason: ' + (a.note || '') + ' · by ' + (a.user || '')], WA_SENT: ['WhatsApp sent to customer', a.note]
   }[a.type] || [a.type, a.note]);
   const escH = e.esc === 'Open' ? hoursSince(e.lastEscAt) : 0, l2 = S.boot.config.l2AfterHours;
-  const waCust = e.mobileFull.replace(/^\+/, '').replace(/^([6-9]\d{9})$/, '91$1');
   root.innerHTML = '<div class="app" style="padding-bottom:110px">' +
     '<div class="hdr tall" style="padding-bottom:70px"><div class="hrow"><a class="iconbtn" href="javascript:history.back()" aria-label="Back">' + IC.back + '</a><span class="eyebrow" style="letter-spacing:1px">' + esc(e.id) + '</span>' +
     '<span style="margin-left:auto;display:flex;gap:6px">' + (e.hot ? '<span class="pill p-hot">HOT LEAD</span>' : '') + statusPill(e) + '</span></div>' +
     '<div style="display:flex;gap:14px;align-items:center;margin-top:16px"><div class="av g" style="width:54px;height:54px;border-radius:16px;font-size:18px">' + esc(initials(e.customer)) + '</div>' +
     '<div style="display:flex;flex-direction:column;min-width:0"><span class="htitle" style="font-size:24px">' + esc(e.customer) + '</span><span class="hsub">' + esc(e.type + (e.company ? ' · ' + e.company : '') + ' · ' + e.mobileFull) + '</span></div></div></div>' +
     '<div class="card float k3"><div class="kv"><b class="mm">' + inr(e.value) + '</b><span>Est. value</span></div><div class="kv"><b class="' + (dleft !== null && dleft <= 2 ? 'a' : '') + '">' + (dleft === null ? '—' : dleft <= 0 ? 'Today' : dleft + ' day' + (dleft > 1 ? 's' : '')) + '</b><span>To purchase</span></div><div class="kv"><b>' + e.followups + '</b><span>Follow-ups</span></div></div>' +
-    '<div style="padding:14px 16px 0" class="g2"><a class="btn btn-ob sm" href="tel:' + esc(e.mobileFull) + '">' + IC.phone + 'Call</a><a class="btn btn-og sm" href="https://wa.me/' + esc(waCust) + '" target="_blank" rel="noopener">' + IC.wa + 'WhatsApp</a></div>' +
+    '<div style="padding:14px 16px 0" class="g2"><a class="btn btn-ob sm" href="tel:' + esc(e.mobileFull) + '">' + IC.phone + 'Call</a><a class="btn btn-og sm" href="#/wa/' + encodeURIComponent(e.id) + '">' + IC.wa + 'WhatsApp</a></div>' +
+    (r.canEdit ? '<div style="padding:10px 16px 0"><a class="btn btn-o sm w100" href="#/edit/' + encodeURIComponent(e.id) + '">' + IC.edit + 'Edit customer / products (reason needed)</a></div>' : '') +
     (open ? '<div style="padding:10px 16px 0"><a class="btn btn-oa sm w100" href="#/esc/' + encodeURIComponent(e.id) + '">' + IC.up + 'Need help? Escalate to buyer (price / stock / GST)</a></div>' : '') +
     (e.esc === 'Open' ? '<div class="banner ' + (escH >= l2 ? 'red' : 'warn') + '" style="margin:12px 16px 0;flex-direction:column;align-items:stretch;gap:8px"><span>' + IC.up + ' Escalated to <b>' + esc(e.lastEscTo) + '</b> · ' + (escH < 1 ? 'just now' : Math.floor(escH) + 'h ago') + '.' + (escH >= l2 ? ' No response yet – escalate to next level.' : '') + '</span>' +
       '<div class="g2">' + (escH >= l2 ? '<a class="btn btn-d sm" href="#/esc/' + encodeURIComponent(e.id) + '?level=L2">Escalate to L2</a>' : '<span></span>') + '<button class="btn btn-o sm" id="resolve">Buyer responded</button></div></div>' : '') +
@@ -1691,6 +1900,7 @@ async function vEnq(id) {
     (open ? '<div class="sec"><span class="sec-h">Today\'s outcome</span></div><div class="g3" style="padding:0 16px">' +
       '<button class="otile fu" data-o="fu">' + IC.clock + 'Follow-up</button><button class="otile cv" data-o="cv">' + IC.check + 'Converted</button><button class="otile ls" data-o="ls">' + IC.x + 'Lost</button></div><div id="oform"></div>'
       : (r.canReopen ? '<div style="padding:16px"><button class="btn btn-o w100" id="reopen">Reopen enquiry</button></div>' : '')) +
+    (r.canDelete ? '<div style="padding:22px 16px 0"><button class="btn btn-o w100" id="delenq" style="color:var(--red);border-color:#EBC3C3">' + IC.trash + 'Delete enquiry (Admin)</button></div>' : '') +
     '</div>';
   if ($('#resolve')) $('#resolve').onclick = () => {
     sheet('<b class="serif" style="font-size:20px">Buyer responded</b><div class="field"><label for="rn">What did the buyer say?</label><textarea class="in" id="rn" maxlength="300" placeholder="e.g. 5% approved, stock from DC on 18 Oct"></textarea></div><button class="btn btn-d w100" id="rs">Save</button>');
@@ -1701,6 +1911,16 @@ async function vEnq(id) {
     $('#rs').onclick = async () => { try { await api('reopen', { id: e.id, note: $('#ro').value }); closeSheet(); toast('Reopened'); route(); } catch (x) { toast(x.message, true); } };
   };
   $$('[data-o]').forEach(x => x.onclick = () => { $$('[data-o]').forEach(z => z.classList.toggle('on', z === x)); outcomeForm(x.dataset.o, e); });
+  if ($('#delenq')) $('#delenq').onclick = () => {
+    sheet('<b class="serif" style="font-size:20px">Delete ' + esc(e.id) + '?</b><div class="banner red"><span>Removes it from every list and dashboard. The full record and your reason are kept in Admin › Edit &amp; delete log.</span></div>' +
+      '<div class="field"><label for="dr">Reason *</label><textarea class="in" id="dr" maxlength="300" placeholder="e.g. Duplicate of DW-… / test entry / wrong store"></textarea></div><button class="btn btn-d w100" id="dok" style="background:var(--red)">Delete enquiry</button><button class="btn btn-o w100" data-close>Cancel</button>');
+    $('#dok').onclick = async () => {
+      const why = $('#dr').value.trim(); if (why.length < 5) return toast('Give a reason (at least 5 letters)', true);
+      $('#dok').disabled = true;
+      try { await api('deleteEnquiry', { id: e.id, reason: why }); closeSheet(); S.dash = null; toast(e.id + ' deleted'); location.hash = isMgr() ? '#/dash' : '#/home'; }
+      catch (x) { $('#dok').disabled = false; toast(x.message, true); }
+    };
+  };
 }
 function outcomeForm(kind, e) {
   const L = S.boot.lists, t = S.boot.config.today, box = $('#oform');
@@ -1739,7 +1959,7 @@ async function vEsc(id, q) {
   const r = (S.enq && S.enq.enquiry.id === id) ? S.enq : (S.enq = await api('getEnquiry', { id }));
   const e = r.enquiry;
   const groups = []; r.lines.forEach(l => { if (groups.indexOf(l.grp) < 0) groups.push(l.grp); });
-  const st = { grp: q.get('grp') || groups[0], needs: e.gst === 'Yes' ? ['Price approval', 'SAP / GST invoice'] : ['Price approval', 'Stock'], sel: null, level: q.get('level') || 'L1' };
+  const st = { grp: q.get('grp') || groups[0], needs: e.gst === 'Yes' ? ['Price approval', 'SAP / GST invoice'] : ['Price approval', 'Stock'], sel: null, level: q.get('level') || 'L1', disc: '' };
   const contactsFor = g => S.boot.escalation.filter(c => c.group === g);
   const sap = S.boot.escalation.filter(c => c.group === 'SAP');
   const draw = () => {
@@ -1748,12 +1968,8 @@ async function vEsc(id, q) {
     if (!st.sel) st.sel = (cs.find(c => c.level === st.level) || cs[0] || sap[0] || {}).name;
     const gname = (cs[0] && cs[0].groupName) || st.grp;
     const sel = cs.concat(sap).find(c => c.name === st.sel) || {};
-    const img = first && first.page ? location.origin + location.pathname.replace(/[^/]*$/, '') + prodImg(first) : '';
-    const msg = '*Diwali gifting enquiry – ' + e.store + ' ' + e.storeName + '*\n' +
-      lines.map(l => 'Product: ' + l.name + (l.brand ? ' (' + l.brand + ')' : '') + '\nCode: ' + (l.codes ? l.codes.split('/')[0] : 'NA') + (l.page ? ' · Catalogue p' + l.page : '') + (l.offer !== '' ? ' · Offer ₹' + l.offer : '') + '\nQty: ' + l.qty + ' · Value ' + inr(l.value)).join('\n') +
-      '\nCustomer: ' + e.type + (e.company ? ' – ' + e.company : '') + ' · GST invoice: ' + e.gst + (e.gst === 'Yes' ? (e.gstin ? ' (' + e.gstin + ')' : ' (GSTIN pending)') : '') +
-      '\nNeed: ' + (st.needs.join(' + ') || 'support') + (e.expectedDate ? ' by ' + dfmt(e.expectedDate) : '') +
-      '\nRef: ' + e.id + ' · ' + e.capturedBy + (img ? '\nPhoto: ' + img : '');
+    const img = first && first.page ? prodImg(first) : '';
+    const msg = escMsg(lines);
     const card = (c, isSap) => '<div class="contact' + (isSap ? ' sap' : '') + (st.sel === c.name ? ' sel' : '') + '" data-sel="' + esc(c.name) + '">' +
       '<div class="lv"><span style="color:' + (isSap ? 'var(--blue)' : c.level === 'L1' ? 'var(--green)' : 'var(--amber)') + '">' + (isSap ? 'SAP' : 'LEVEL') + '</span>' + (isSap ? IC.doc : '<b style="color:' + (c.level === 'L1' ? 'var(--green)' : 'var(--amber)') + '">' + esc(c.level.replace('L', '')) + '</b>') + '</div>' +
       '<div class="pinfo"><b>' + esc(c.name) + '</b><span>' + esc(c.role) + '</span><span style="font-weight:600;color:var(--ink2)">' + esc(c.phone) + '</span></div>' +
@@ -1764,25 +1980,37 @@ async function vEsc(id, q) {
       (first ? '<div style="display:flex;gap:12px;align-items:center;background:rgba(255,255,255,.08);border-radius:14px;padding:10px;margin-top:14px">' + (first.page ? '<div class="pgb" style="background:#FFF6EA"><img src="' + prodImg(first) + '" alt=""></div>' : '') +
         '<div style="display:flex;flex-direction:column;min-width:0"><span style="font-size:14px;font-weight:800;color:#fff">' + esc(first.name) + (lines.length > 1 ? ' +' + (lines.length - 1) : '') + '</span><span style="font-size:12px;color:var(--gold2)">' + lines.reduce((a, l) => a + l.qty, 0) + ' units · ' + inr(lines.reduce((a, l) => a + l.value, 0)) + (e.gst === 'Yes' ? ' · GST invoice' : '') + '</span></div></div>' : '') + '</div>' +
       (groups.length > 1 ? '<div class="chips scroll" style="padding:14px 16px 0">' + groups.map(g => { const c = contactsFor(g)[0]; return '<button class="chip' + (g === st.grp ? ' on' : '') + '" data-g="' + esc(g) + '">' + esc(c ? c.groupName : g) + '</button>'; }).join('') + '</div>' : '') +
-      '<div style="padding:16px 16px 0" class="stack"><span class="lbl">What do you need?</span><div class="chips" id="needs">' + S.boot.lists.needs.map(n => '<button class="chip' + (st.needs.indexOf(n) >= 0 ? ' on' : '') + '" data-n="' + esc(n) + '">' + esc(n) + '</button>').join('') + '</div></div>' +
+      '<div style="padding:16px 16px 0" class="stack"><span class="lbl">What do you need?</span><div class="chips" id="needs">' + S.boot.lists.needs.map(n => '<button class="chip' + (st.needs.indexOf(n) >= 0 ? ' on' : '') + '" data-n="' + esc(n) + '">' + esc(n) + '</button>').join('') + '</div>' +
+        '<div class="field"><label for="edisc">Customer asked for discount % <span class="opt">(optional – goes into the message)</span></label><input class="in" id="edisc" inputmode="decimal" maxlength="5" placeholder="e.g. 10" value="' + esc(st.disc) + '" style="max-width:160px"></div></div>' +
       '<div class="sec"><span class="sec-h">Who to contact</span><small style="font-weight:800;letter-spacing:.5px">GM ESCALATION MATRIX</small></div>' +
       '<div style="margin:0 16px 8px;background:var(--sand);border-radius:12px;padding:8px 12px;font-size:12px;color:var(--ink2)">Product <b>' + esc(first ? first.cat : '') + '</b> → <b style="color:var(--m)">' + esc(gname) + '</b></div>' +
       '<div class="stack" style="padding:0 16px;gap:8px">' + (cs.length ? cs.map(c => card(c, false)).join('') : '<div class="empty" style="padding:6px">No buyer mapped for this category – contact your AM.</div>') + sap.map(c => card(c, true)).join('') + '</div>' +
-      '<div class="sec"><span class="sec-h">Ready WhatsApp</span><small style="font-weight:800;letter-spacing:.5px">EDITABLE · PHOTO ' + (img ? 'ATTACHED' : 'N/A') + '</small></div>' +
+      '<div class="sec"><span class="sec-h">Ready WhatsApp</span><small style="font-weight:800;letter-spacing:.5px">EDITABLE · ' + (img ? 'PHOTO ATTACHED' : 'NO PHOTO') + '</small></div>' +
       '<div class="wa-wrap"><div class="wa-b">' + (img ? '<img src="' + prodImg(first) + '" alt="' + esc(first.name) + '">' : '') + '<textarea id="wamsg" aria-label="Message">' + esc(msg) + '</textarea></div></div>' +
       '<div class="foot" style="flex-direction:column;align-items:stretch;gap:6px"><button class="btn btn-g w100" id="send">' + IC.wa + 'Send to ' + esc((sel.name || '').split(' ')[0]) + ' on WhatsApp</button>' +
       '<span style="font-size:12px;color:var(--muted);text-align:center">Logged in the enquiry journey · HO sees open escalations</span></div></div>';
     $$('[data-g]').forEach(x => x.onclick = () => { st.grp = x.dataset.g; st.sel = null; draw(); });
     $$('[data-n]').forEach(x => x.onclick = () => { const n = x.dataset.n; const i = st.needs.indexOf(n); if (i >= 0) st.needs.splice(i, 1); else st.needs.push(n); draw(); });
+    $('#edisc').oninput = ev => { st.disc = ev.target.value.replace(/[^\d.]/g, '').slice(0, 5); $('#wamsg').value = escMsg(r.lines.filter(l => l.grp === st.grp)); };
     $$('[data-sel]').forEach(x => x.onclick = ev => { if (ev.target.closest('a,button')) return; st.sel = x.dataset.sel; draw(); });
     $$('[data-call]').forEach(a => a.onclick = () => { logEsc(e, st, a.dataset.call, 'Call'); });
     $$('[data-wa]').forEach(b => b.onclick = () => { st.sel = b.dataset.wa; sendWa(e, st, false); });
     $('#send').onclick = () => sendWa(e, st, true);
   };
+  /* v8: no links in the message; customer's discount ask goes in */
+  function escMsg(lines) {
+    const d = Number(st.disc);
+    return '*Diwali gifting enquiry – ' + e.store + ' ' + e.storeName + '*\n' +
+      lines.map(l => 'Product: ' + l.name + (l.brand ? ' (' + l.brand + ')' : '') + '\nCode: ' + (l.codes ? l.codes.split('/')[0] : 'NA') + (l.page ? ' · Catalogue p' + l.page : '') + (l.offer !== '' ? ' · Offer ₹' + l.offer : '') + '\nQty: ' + l.qty + ' · Value ' + inr(l.value)).join('\n') +
+      '\nCustomer: ' + e.type + (e.company ? ' – ' + e.company : '') + ' · GST invoice: ' + e.gst + (e.gst === 'Yes' ? (e.gstin ? ' (' + e.gstin + ')' : ' (GSTIN pending)') : '') +
+      (d > 0 ? '\n*Customer asks for ' + d + '% discount*' + (lines.length === 1 && lines[0].offer !== '' && lines[0].offer ? ' (≈ ₹' + Math.round(lines[0].offer * (1 - d / 100)).toLocaleString('en-IN') + ' per unit)' : '') : '') +
+      '\nNeed: ' + (st.needs.join(' + ') || 'support') + (e.expectedDate ? ' by ' + dfmt(e.expectedDate) : '') +
+      '\nRef: ' + e.id + ' · ' + e.capturedBy;
+  }
   const logEsc = (en, s, name, channel) => {
     const c = S.boot.escalation.find(x => x.name === name && (x.group === s.grp || x.group === 'SAP'));
     if (!c) return;
-    api('logEscalation', { id: en.id, group: c.group === 'SAP' ? s.grp : c.group, level: c.level, contactName: c.name, channel, needs: s.needs, note: '' })
+    api('logEscalation', { id: en.id, group: c.group === 'SAP' ? s.grp : c.group, level: c.level, contactName: c.name, channel, needs: s.needs, note: Number(s.disc) > 0 ? 'Customer asks ' + Number(s.disc) + '% discount' : '' })
       .then(() => { S.dash = null; toast('Escalation logged'); }).catch(x => toast(x.message, true));
   };
   async function sendWa(en, s, preferShare) {
@@ -1802,6 +2030,48 @@ async function vEsc(id, q) {
     window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(text), '_blank', 'noopener');
   }
   draw();
+}
+
+/* =================== v8: CUSTOMER WHATSAPP =================== */
+async function vWa(id) {
+  await ensureBoot();
+  loading();
+  const r = (S.enq && S.enq.enquiry.id === id) ? S.enq : (S.enq = await api('getEnquiry', { id }));
+  const e = r.enquiry, staff = String(e.capturedBy || '').replace(/\s*\(.*\)\s*$/, '');
+  const pics = r.lines.filter(l => l.page || l.productId).map(l => ({ src: prodImg(l), name: l.name, id: l.productId || 'catalogue-p' + l.page }));
+  const msg = 'Namaste ' + e.customer + ' ji 🙏\n' +
+    'Thank you for visiting *Vishal Mega Mart, ' + e.storeName + '* for your Diwali gifting.\n\n*Your requirement*\n' +
+    r.lines.map((l, i) => (i + 1) + '. ' + l.name + (l.brand ? ' (' + l.brand + ')' : '') + '\n    Qty ' + l.qty + (l.unitPrice ? ' × ' + inr(l.unitPrice) + ' = ' + inr(l.value) : '')).join('\n') +
+    '\n\n*Total:* ' + e.qty + ' units' + (e.value ? ' · approx ' + inr(e.value) : '') +
+    (e.expectedDate ? '\n*Needed by:* ' + dfmt(e.expectedDate) : '') +
+    '\n\nReply here or visit the store to confirm your order.' +
+    '\nRef: ' + e.id + (staff ? '\n– ' + staff + ', Vishal Mega Mart ' + e.storeName : '');
+  const num = String(e.mobileFull || '').replace(/^\+/, '').replace(/^([6-9]\d{9})$/, '91$1');
+  const canFiles = !!(navigator.canShare && window.File);
+  root.innerHTML = '<div class="app" style="padding-bottom:150px">' +
+    '<div class="hdr"><div class="hrow"><a class="iconbtn" href="#/enq/' + encodeURIComponent(e.id) + '" aria-label="Back">' + IC.back + '</a><div style="display:flex;flex-direction:column;min-width:0"><span class="htitle">WhatsApp customer</span><span class="hsub">' + esc(e.customer + ' · ' + e.mobileFull) + '</span></div></div></div>' +
+    '<div class="card stack" style="gap:10px"><div style="display:flex;justify-content:space-between;align-items:baseline"><h3>Products</h3><span class="mu" style="font-size:12px">' + e.qty + ' units · ' + pics.length + ' photo' + (pics.length === 1 ? '' : 's') + '</span></div>' +
+    r.lines.map(l => '<div style="display:flex;gap:12px;align-items:center">' + (l.page || l.productId ? '<div class="pgb"><img src="' + prodImg(l) + '" alt="" loading="lazy"></div>' : '<div class="pgb">✎<small>manual</small></div>') +
+      '<div class="pinfo"><b>' + esc(l.name) + '</b><span>Qty ' + l.qty + (l.unitPrice ? ' × ' + inr(l.unitPrice) : '') + '</span></div><b style="color:var(--m);white-space:nowrap">' + inr(l.value) + '</b></div>').join('') + '</div>' +
+    '<div class="sec"><span class="sec-h">Ready WhatsApp</span><small style="font-weight:800;letter-spacing:.5px">EDITABLE · NO LINKS</small></div>' +
+    '<div class="wa-wrap"><div class="wa-b">' + (pics[0] ? '<img src="' + pics[0].src + '" alt="' + esc(pics[0].name) + '">' : '') + '<textarea id="wamsg" aria-label="Message">' + esc(msg) + '</textarea></div></div>' +
+    '<div class="foot" style="flex-direction:column;align-items:stretch;gap:8px">' +
+    (canFiles && pics.length ? '<button class="btn btn-g w100" id="wsh">' + IC.wa + 'Send message + photo' + (pics.length > 1 ? 's' : '') + '</button><button class="btn btn-o w100" id="wtx">Send message only to ' + esc(e.customer.split(' ')[0]) + '</button>'
+      : '<button class="btn btn-g w100" id="wtx">' + IC.wa + 'Send to ' + esc(e.customer.split(' ')[0]) + ' on WhatsApp</button>' + (pics.length ? '<span style="font-size:12px;color:var(--muted);text-align:center">Photos can be attached from a phone.</span>' : '')) +
+    (canFiles && pics.length ? '<span style="font-size:12px;color:var(--muted);text-align:center">“Message + photo” opens the share list – pick WhatsApp, then ' + esc(e.customer.split(' ')[0]) + '.</span>' : '') + '</div></div>';
+  const logged = () => api('waSent', { id: e.id }).then(() => { S.enq = null; }).catch(() => { });
+  $('#wtx').onclick = () => { logged(); window.open('https://wa.me/' + num + '?text=' + encodeURIComponent($('#wamsg').value), '_blank', 'noopener'); };
+  if ($('#wsh')) $('#wsh').onclick = async () => {
+    const b = $('#wsh'); b.disabled = true;
+    try {
+      const files = [];
+      for (const p of pics.slice(0, 10)) { try { const bl = await (await fetch(p.src)).blob(); files.push(new File([bl], p.id + '.jpg', { type: 'image/jpeg' })); } catch (x) { } }
+      const data = { files, text: $('#wamsg').value };
+      if (!files.length || !navigator.canShare(data)) { b.disabled = false; return $('#wtx').click(); }
+      await navigator.share(data); logged();
+    } catch (x) { if (!(x && x.name === 'AbortError')) toast('Could not share – use “Send message only”', true); }
+    b.disabled = false;
+  };
 }
 
 /* =================== MANAGER DASHBOARD =================== */
@@ -1835,6 +2105,7 @@ async function vDash() {
     (showZ ? '<select class="in" id="fz" aria-label="Zone"><option value="">All zones</option>' + d.filters.zfms.map(z => '<option' + (F.zfm === z ? ' selected' : '') + '>' + esc(z) + '</option>').join('') + '</select>' : '') +
     (showAM ? '<select class="in" id="fa" aria-label="Area Manager"><option value="">All AMs</option>' + amOpts.map(a => '<option value="' + esc(a[0]) + '"' + (F.am === a[0] ? ' selected' : '') + '>' + esc(a[1] || a[0]) + '</option>').join('') + '</select>' : '') +
     '<div class="seg">' + [['season', 'Season'], ['7d', '7 days'], ['today', 'Today']].map(p => '<button data-p="' + p[0] + '" class="' + (F.period === p[0] ? 'on' : '') + '">' + p[1] + '</button>').join('') + '</div>' +
+    '<form id="dsf" role="search" style="display:flex"><input class="in" id="dsq" type="search" placeholder="Store code, AM, enquiry ID, mobile…" aria-label="Search" style="min-width:200px"></form>' +
     '<button class="btn btn-gold sm" id="dexp">' + IC.dl + 'Export</button><a class="btn sm" style="background:rgba(255,255,255,.1);color:#fff" href="' + (F.am ? '#/list?view=open&am=' + encodeURIComponent(F.am) : u.role === 'AM' ? '#/list?view=open' : '#/list?view=hot') + '">Enquiries</a>' + (F.am && u.role !== 'AM' ? '<button class="btn sm" id="amclr" style="background:rgba(255,255,255,.1);color:#fff">× AM</button>' : '') +
     '<button class="iconbtn" id="drf" aria-label="Refresh">' + IC.refresh + '</button><button class="iconbtn" id="menu" aria-label="Menu">' + IC.user + '</button></div></div></div>' +
     '<div class="dbody">' +
@@ -1866,8 +2137,8 @@ async function vDash() {
       return bcN ? '<div class="banner blue"><span><b>' + Math.round(bcN / cnt * 100) + '% of buyers bring ' + Math.round(bcV / cval * 100) + '% of value.</b>' + (ind.conversionPct ? ' Corporate/bulk convert ' + (bcConv / ind.conversionPct).toFixed(1) + '× vs individuals.' : '') + '</span></div>' : ''; })() + '</div></div>' +
     '<div class="flexw"><div class="panel p-main"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h3>' + (boardIsStore ? 'Store leaderboard' : 'AM leaderboard') + '</h3><span class="tag" style="font-size:12px">sorted by converted ₹ · tap a row to drill down</span></div>' +
     '<div class="ovx"><table class="tbl"><thead><tr><th>' + (boardIsStore ? 'Store' : 'Area Manager') + '</th><th>Stores</th><th>Enq</th><th>Conversion</th><th style="text-align:right">Converted ₹</th><th style="text-align:right">Pipeline ₹</th><th style="text-align:right">Overdue</th><th style="text-align:right">Zero-capture</th></tr></thead><tbody>' +
-    board.slice(0, S.showAll ? 400 : 15).map(r => { const bad = r.enquiries && r.conversionPct < 12 || r.zero > r.stores / 2; const col = r.conversionPct >= 25 ? '#1E7A4C' : r.conversionPct >= 15 ? '#C9962F' : '#A3242B';
-      return '<tr class="click' + (bad ? ' bad' : '') + '" data-row="' + esc(r.key) + '"><td style="font-weight:700">' + esc(r.name) + '</td><td>' + r.stores + '</td><td>' + r.enquiries + '</td><td><div class="mini"><div class="tr"><div class="fl" style="width:' + Math.min(100, r.conversionPct * 2.5) + '%;background:' + col + '"></div></div><b>' + r.conversionPct + '%</b></div></td><td style="text-align:right">' + shortInr(r.convertedValue) + '</td><td style="text-align:right">' + (r.pipeline === null ? '–' : shortInr(r.pipeline)) + '</td><td style="text-align:right;' + (r.overdue > 10 ? 'color:var(--red);font-weight:800' : '') + '">' + (r.overdue === null ? '–' : r.overdue) + '</td><td style="text-align:right;' + (r.zero ? 'color:var(--red);font-weight:700' : '') + '">' + r.zero + '</td></tr>'; }).join('') +
+    board.slice(0, 1500).map((r, i) => { const bad = r.enquiries && r.conversionPct < 12 || r.zero > r.stores / 2; const col = r.conversionPct >= 25 ? '#1E7A4C' : r.conversionPct >= 15 ? '#C9962F' : '#A3242B';
+      return '<tr class="click' + (bad ? ' bad' : '') + (i >= 15 && !S.showAll ? ' more' : '') + '" data-row="' + esc(r.key) + '"><td style="font-weight:700">' + esc(r.name) + '</td><td>' + r.stores + '</td><td>' + r.enquiries + '</td><td><div class="mini"><div class="tr"><div class="fl" style="width:' + Math.min(100, r.conversionPct * 2.5) + '%;background:' + col + '"></div></div><b>' + r.conversionPct + '%</b></div></td><td style="text-align:right">' + shortInr(r.convertedValue) + '</td><td style="text-align:right">' + (r.pipeline === null ? '–' : shortInr(r.pipeline)) + '</td><td style="text-align:right;' + (r.overdue > 10 ? 'color:var(--red);font-weight:800' : '') + '">' + (r.overdue === null ? '–' : r.overdue) + '</td><td style="text-align:right;' + (r.zero ? 'color:var(--red);font-weight:700' : '') + '">' + r.zero + '</td></tr>'; }).join('') +
     '</tbody></table></div>' + (board.length > 15 ? '<button class="btn btn-o sm" id="showall">' + (S.showAll ? 'Show top 15' : 'Show all ' + board.length) + '</button>' : '') + '</div>' +
     '<div class="act p-side"><h3 class="serif" style="margin:0;font-size:18px">Act today</h3>' + d.insights.map((t, i) => '<div class="it"><em>' + (i + 1) + '</em><span>' + bold(t) + '</span></div>').join('') +
     '<a class="btn btn-gold sm" href="#/list?view=hot" style="margin-top:auto">Open hot-lead list</a><a class="btn sm" style="background:rgba(255,255,255,.1);color:#fff" href="#/list?view=overdue">Overdue follow-ups</a>' +
@@ -1885,6 +2156,14 @@ async function vDash() {
   $('#dexp').onclick = async () => { try { const r = await api('exportCsv', { view: 'all', am: F.am, zfm: F.zfm, from: F.period === 'today' ? S.boot.config.today : F.period === '7d' ? addDays(S.boot.config.today, -6) : '' }); downloadCsv(r.csv, 'diwali-enquiries-' + todayLocal() + '.csv'); toast(r.rows + ' rows downloaded'); } catch (e) { toast(e.message, true); } };
   $$('[data-row]').forEach(tr => tr.onclick = () => { if (boardIsStore) location.hash = '#/list?view=open&store=' + encodeURIComponent(tr.dataset.row); else { F.am = tr.dataset.row; vDash(); } });
   if ($('#amclr')) $('#amclr').onclick = () => { F.am = ''; vDash(); };
+  $('#dsf').onsubmit = ev => {
+    ev.preventDefault();
+    const v = $('#dsq').value.trim(), V = v.toUpperCase(); if (!v) return;
+    if (SVC.storeMap[V]) { location.hash = '#/list?view=open&store=' + encodeURIComponent(V); return; }
+    const am = amOpts.find(a => a[0].toUpperCase() === V || String(a[1] || '').toUpperCase().indexOf(V) >= 0);
+    if (am && u.role !== 'AM') { F.am = am[0]; vDash(); return; }
+    location.hash = '#/list?view=' + (u.role === 'AM' ? 'all' : 'hot') + '&q=' + encodeURIComponent(v);
+  };
 }
 
 /* =================== ADMIN =================== */
@@ -1937,8 +2216,10 @@ async function vAdmin() {
     '<div class="field"><label>Test mode (skip GPS)</label><div class="seg" id="tm" style="align-self:flex-start"><button type="button" data-tm="1" class="' + (st.testMode ? 'on' : '') + '">ON</button><button type="button" data-tm="0" class="' + (!st.testMode ? 'on' : '') + '">OFF</button></div></div></div>' +
     '<div class="g2">' + f('s-ce', 'Cap: new enquiries / store / day', st.capEnq, 'number') + f('s-ca', 'Cap: follow-ups & updates / store / day', st.capAct, 'number') + '</div>' +
     '<div class="g2">' + f('s-cr', 'Cap: data refreshes / phone / day', st.capRefresh, 'number') + '<div class="field"><label>Budget guide</label><span class="mu" style="font-size:12px;line-height:1.4">Caps keep the free Supabase database (500 MB) and download allowance (5 GB/month) safe. Lower caps = less data.</span></div></div>' +
-    '<div class="g2">' + f('s-idle', 'Log out after no activity (minutes)', st.idleMins || 30, 'number', ' min="5" max="1440"') + f('s-max', 'Longest session (minutes)', st.sessionMins || 720, 'number', ' min="30" max="43200"') + '</div>' +
-    '<span class="tag" style="font-size:12px;margin-top:-4px">Applies to every login. Example: 30 = log out after 30 min idle; 720 = log in again after 12 hours even if active.</span>' +
+    '<div class="g2">' + f('s-idle', 'Log out after no activity (minutes)', st.idleMins || 15, 'number', ' min="5" max="1440"') + f('s-max', 'Longest session (minutes)', st.sessionMins || 720, 'number', ' min="30" max="43200"') + '</div>' +
+    '<div class="g2">' + f('s-nos', 'Store: log out if nothing saved for (minutes, 0 = off)', st.noSaveMins === undefined ? 10 : st.noSaveMins, 'number', ' min="0" max="720"') +
+      '<div class="field"><label for="s-snap">Snapshot camera on tables for</label><select class="in" id="s-snap">' + [['ADMIN', 'Admin only'], ['ADMIN_HO', 'Admin + HO'], ['ALL', 'Everyone']].map(o => '<option value="' + o[0] + '"' + ((st.snapRoles || 'ADMIN') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select></div></div>' +
+    '<span class="tag" style="font-size:12px;margin-top:-4px">Idle and longest session apply to every login. The no-save rule applies to store logins only: a store that browses without saving an enquiry or follow-up is logged out (warning in the last 2 min).</span>' +
     '<div class="g2">' + f('s-hq', 'Hot lead qty ≥', st.hotQty, 'number') + f('s-hv', 'Hot lead value ₹ ≥', st.hotValue, 'number') + '</div>' +
     '<div class="g2">' + f('s-l2', 'Escalate to L2 after (hours)', st.l2AfterHours, 'number') + f('s-dd', 'Diwali date', st.diwaliDate, 'date') + '</div>' +
     '<div class="g2">' + f('s-ss', 'Season start (reports)', st.seasonStart, 'date') + f('s-bc', 'Bulk orders helpline', st.bulkContact) + '</div>' +
@@ -1948,7 +2229,7 @@ async function vAdmin() {
     '<div class="field"><label for="s-au">Extra Admin account IDs (optional – codes listed above already work)</label><textarea class="in" id="s-au" style="min-height:60px;font-size:13px">' + esc((st.adminUids || []).join('\n')) + '</textarea></div>' +
     '<span class="tag" style="font-size:12px">AM login = AM Code from store master. Zone login = ZFM-&lt;name&gt; (e.g. ZFM-' + esc(String((SVC.stores[0] || {}).zfm || 'HARPREET').replace(/\s+/g, '').toUpperCase()) + ').</span>' +
     '<button class="btn btn-d w100" type="submit"' + (reg ? '' : ' disabled') + '>Save settings</button></form>' +
-    '<div class="card stack" style="gap:8px"><h3>Logins &amp; PINs</h3><span class="mu" style="font-size:13px;line-height:1.5">Every login, wrong PIN, PIN change, Forgot-PIN reset, time-out and Admin reset is recorded. Users reset their own PIN with their registered mobile – Admin reset is only a fallback.</span><div class="g2"><a class="btn btn-o" href="#/logins">Login &amp; PIN log</a><a class="btn btn-o" href="#/pins">PIN reset requests</a></div></div>' +
+    '<div class="card stack" style="gap:8px"><h3>Logins, sessions &amp; logs</h3><span class="mu" style="font-size:13px;line-height:1.5">Every login, wrong PIN, PIN change, Forgot-PIN reset, time-out and Admin reset is recorded. Users reset their own PIN with their registered mobile – Admin reset is only a fallback.</span><div class="g2"><a class="btn btn-o" href="#/sessions">Sessions (who is logged in)</a><a class="btn btn-o" href="#/logins">Login &amp; PIN log</a><a class="btn btn-o" href="#/audit">Edit &amp; delete log</a><a class="btn btn-o" href="#/pins">PIN reset requests</a></div></div>' +
     '<div class="card stack" style="gap:12px"><h3>Masters</h3>' + Object.keys(MASTER_SPEC).map(k => '<div class="stack" style="gap:6px;border-top:1px solid var(--line);padding-top:10px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b>' + MASTER_SPEC[k].label + '</b><span class="pill ' + (counts[k] ? 'p-conv' : 'p-over') + '">' + counts[k] + ' rows</span></div>' +
       '<span class="tag" style="font-size:12px">' + esc(MASTER_SPEC[k].hint) + '</span><input type="file" accept=".csv,text/csv" data-up="' + k + '"' + (reg ? '' : ' disabled') + ' aria-label="Upload ' + MASTER_SPEC[k].label + '"><span class="tag" id="up-' + k + '"></span></div>').join('') + '</div>' +
     '<div class="card stack" style="gap:6px"><h3>Database usage (Supabase free plan)</h3><span class="mu" style="font-size:13px;line-height:1.5">Free plan: 500 MB database (roughly 1.5–2 lakh enquiries) and 5 GB downloads a month. Phones refresh only changed records, at most every 5 min, and stop at the refresh cap. HO / zone dashboards are cached 10 min (tap ⟳ to force). Check Supabase › Reports › Database size during the season; move to the Pro plan if it gets close to 500 MB.</span></div></div>';
@@ -1958,7 +2239,7 @@ async function vAdmin() {
   $('#setf').onsubmit = async e => {
     e.preventDefault();
     try {
-      await api('adminSave', { settings: { capEnq: $('#s-ce').value, capAct: $('#s-ca').value, capRefresh: $('#s-cr').value, idleMins: $('#s-idle').value, sessionMins: $('#s-max').value, radiusKm: $('#s-rad').value, testMode: tm, hotQty: $('#s-hq').value, hotValue: $('#s-hv').value, l2AfterHours: $('#s-l2').value, diwaliDate: $('#s-dd').value, seasonStart: $('#s-ss').value,
+      await api('adminSave', { settings: { capEnq: $('#s-ce').value, capAct: $('#s-ca').value, capRefresh: $('#s-cr').value, idleMins: $('#s-idle').value, sessionMins: $('#s-max').value, noSaveMins: $('#s-nos').value, snapRoles: $('#s-snap').value, radiusKm: $('#s-rad').value, testMode: tm, hotQty: $('#s-hq').value, hotValue: $('#s-hv').value, l2AfterHours: $('#s-l2').value, diwaliDate: $('#s-dd').value, seasonStart: $('#s-ss').value,
         bulkContact: $('#s-bc').value, catalogueUrl: $('#s-cu').value, adminCodes: $('#s-ac').value, hoCodes: $('#s-ho').value, adminUids: $('#s-au').value } });
       S.boot = null; toast('Settings saved'); route();
     } catch (x) { toast(x.message, true); }
@@ -2069,6 +2350,79 @@ async function vLogins(_, q) {
     downloadCsv(csv, 'login_pin_log_' + todayLocal() + '.csv');
   };
 }
+/* =================== v8: SESSIONS (Admin) =================== */
+const ROLE_LBL = { STORE: 'Store', AM: 'AM', ZFM: 'Zone', HO: 'HO', ADMIN: 'Admin' };
+async function vSessions(_, q) {
+  await ensureBoot();
+  if (S.boot.user.role !== 'ADMIN') { location.hash = isMgr() ? '#/dash' : '#/home'; return; }
+  loading(true);
+  const d = await api('adminSessions');
+  const tab = q.get('tab') === 'today' ? 'today' : 'now', role = ROLE_LBL[q.get('role')] ? q.get('role') : '';
+  const nameOf = c => { try { const r = SVC.resolveCode(c); return r ? r.name : ''; } catch (e) { return ''; } };
+  const roleOf = (c, r) => r || (() => { try { const x = SVC.resolveCode(c); return x ? x.role : ''; } catch (e) { return ''; } })();
+  const nowRows = (d.now || []).filter(r => !role || r.role === role), todayRows = (d.today || []).map(r => Object.assign(r, { role: roleOf(r.code) })).filter(r => !role || r.role === role);
+  const cnt = rl => (d.now || []).filter(r => r.role === rl).length;
+  const chip = (lbl, n) => '<div class="card" style="padding:12px 14px;flex:1;min-width:120px"><span class="mu" style="font-size:12px;font-weight:700">' + lbl + '</span><b style="display:block;font-size:22px">' + n + '</b></div>';
+  const dev = ua => { ua = String(ua || ''); return /iPhone|iPad/.test(ua) ? 'iPhone' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac/.test(ua) ? 'Mac' : ua ? 'Other' : ''; };
+  const where = r => esc([r.desig, typeof r.km === 'number' ? r.km + ' km' : '', r.test === true ? 'test mode' : ''].filter(Boolean).join(' · '));
+  const qs = o => { const p = new URLSearchParams(); if (o.tab !== 'now') p.set('tab', o.tab); if (o.role) p.set('role', o.role); return '#/sessions' + (p.toString() ? '?' + p : ''); };
+  root.innerHTML = '<div class="app wide" style="max-width:1100px;padding-bottom:40px"><div class="hdr"><div class="hrow"><a class="iconbtn" href="#/admin" aria-label="Back">' + IC.back + '</a><div style="display:flex;flex-direction:column"><h1 class="htitle">Sessions</h1><span class="hsub">' + esc('Checked ' + String(d.at || '').slice(11, 16) + ' IST · idle logout ' + d.idleMins + ' min · store no-save logout ' + (d.noSaveMins ? d.noSaveMins + ' min' : 'off')) + '</span></div><button class="iconbtn" id="srf" style="margin-left:auto" aria-label="Refresh">' + IC.refresh + '</button></div></div>' +
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">' + chip('Logged in now', (d.now || []).length) + chip('Stores now', cnt('STORE')) + chip('AM / Zone now', cnt('AM') + cnt('ZFM')) + chip('HO / Admin now', cnt('HO') + cnt('ADMIN')) + chip('Logged in today', (d.today || []).length) + '</div>' +
+    '<div class="card" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px"><div class="seg">' + [['now', 'Logged in now'], ['today', 'Who logged in today']].map(t => '<a class="' + (tab === t[0] ? 'on' : '') + '" href="' + qs({ tab: t[0], role }) + '">' + t[1] + '</a>').join('') + '</div>' +
+    '<select class="in" id="srole" style="width:auto;min-width:140px" aria-label="Role"><option value="">All roles</option>' + Object.keys(ROLE_LBL).map(k => '<option value="' + k + '"' + (k === role ? ' selected' : '') + '>' + ROLE_LBL[k] + '</option>').join('') + '</select>' +
+    '<span class="tag" style="font-size:12px;flex:1;min-width:200px">Force logout ends that phone\'s session at its next tap. To stop someone for good, reset their PIN.</span></div>' +
+    '<div class="card"><div class="ovx">' + (tab === 'now'
+      ? '<table class="tbl"><thead><tr><th>Code</th><th>Name</th><th>Role</th><th>Logged in</th><th>Last activity</th><th>Last save</th><th>Where / device</th><th></th></tr></thead><tbody>' +
+        (nowRows.length ? nowRows.map(r => '<tr><td><b>' + esc(r.code) + '</b></td><td>' + esc(nameOf(r.code)) + '</td><td>' + esc(ROLE_LBL[r.role] || r.role || '') + '</td><td>' + esc(String(r.login).slice(11)) + '</td><td>' + (r.idleMin < 1 ? 'now' : r.idleMin + ' min ago') + '</td><td>' + (r.role === 'STORE' ? (r.saveMin < 1 ? 'now' : r.saveMin + ' min ago') : '–') + '</td><td style="white-space:normal">' + where(r) + (dev(r.ua) ? ' · ' + dev(r.ua) : '') + '</td><td>' +
+          (r.me ? '<span class="tag">you</span>' : '<button class="btn btn-o sm" data-kick="' + esc(r.sid) + '" data-kc="' + esc(r.code) + '" style="color:var(--red)">Force logout</button>') + '</td></tr>').join('') : '<tr><td colspan="8" class="mu" style="text-align:center;padding:24px">Nobody logged in right now</td></tr>') + '</tbody></table>'
+      : '<table class="tbl"><thead><tr><th>Code</th><th>Name</th><th>Role</th><th>First login</th><th>Last login</th><th>Logins</th><th>Where</th></tr></thead><tbody>' +
+        (todayRows.length ? todayRows.map(r => '<tr class="click" data-c="' + esc(r.code) + '"><td><b>' + esc(r.code) + '</b></td><td>' + esc(nameOf(r.code)) + '</td><td>' + esc(ROLE_LBL[r.role] || '') + '</td><td>' + esc(String(r.first).slice(11)) + '</td><td>' + esc(String(r.last).slice(11)) + '</td><td>' + r.logins + '</td><td style="white-space:normal">' + where(r) + '</td></tr>').join('') : '<tr><td colspan="7" class="mu" style="text-align:center;padding:24px">No logins today yet</td></tr>') + '</tbody></table>') +
+    '</div></div></div>';
+  $('#srf').onclick = () => route();
+  $('#srole').onchange = e => { location.hash = qs({ tab, role: e.target.value }); };
+  $$('tr[data-c]').forEach(tr => tr.onclick = () => { location.hash = '#/logins?code=' + encodeURIComponent(tr.dataset.c); });
+  $$('[data-kick]').forEach(b => b.onclick = () => {
+    sheet('<b class="serif" style="font-size:20px">Log out ' + esc(b.dataset.kc) + '?</b><span class="mu" style="font-size:13px">' + esc(nameOf(b.dataset.kc)) + ' will see “Logged out by Admin” at the next tap and must log in again.</span>' +
+      '<button class="btn btn-d w100" id="k1" style="background:var(--red)">Log out this phone</button><button class="btn btn-o w100" id="k2">Log out every phone of ' + esc(b.dataset.kc) + '</button><button class="btn btn-o w100" data-close>Cancel</button>');
+    const go = async (sid, code) => { try { const r = await api('forceLogout', { sid, code }); closeSheet(); toast((r.ended || 0) + ' session' + (r.ended === 1 ? '' : 's') + ' ended'); route(); } catch (x) { toast(x.message, true); } };
+    $('#k1').onclick = () => go(b.dataset.kick, '');
+    $('#k2').onclick = () => go('', b.dataset.kc);
+  });
+}
+
+/* =================== v8: EDIT & DELETE LOG (Admin) =================== */
+async function vAudit(_, q) {
+  await ensureBoot();
+  if (S.boot.user.role !== 'ADMIN') { location.hash = isMgr() ? '#/dash' : '#/home'; return; }
+  loading(true);
+  const store = String(q.get('store') || '').trim().toUpperCase(), action = ['EDIT', 'DELETE'].indexOf(q.get('action')) >= 0 ? q.get('action') : '';
+  const d = await api('auditList', { store, action, limit: 1000 }), rows = d.rows || [];
+  const nameOf = c => { try { const r = SVC.resolveCode(c); return r ? r.name : ''; } catch (e) { return ''; } };
+  const val = v => v === undefined || v === null || v === '' ? '–' : v === true ? 'Yes' : v === false ? 'No' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+  const LBL = Object.assign({}, EDIT_LABEL, { totalQty: 'Qty', estValue: 'Est. value ₹', isHot: 'Hot lead', productSummary: 'Products' });
+  const what = r => {
+    const dt = r.detail || {};
+    if (r.action === 'DELETE') { const sm = dt.summary || {}; return esc([sm.customerName, sm.mobile, sm.customerType, sm.productSummary, sm.estValue ? inr(sm.estValue) : '', sm.status, sm.createdDate ? 'captured ' + dfmt(sm.createdDate) : ''].filter(Boolean).join(' · ')); }
+    const b = dt.before || {}, a = dt.after || {};
+    return (dt.fields || []).filter(f => f !== 'lines').map(f => '<b>' + esc(LBL[f] || f) + '</b>: ' + esc(val(b[f])) + ' → ' + esc(val(a[f]))).join('<br>') || esc((dt.fields || []).join(', '));
+  };
+  root.innerHTML = '<div class="app wide" style="max-width:1100px;padding-bottom:40px"><div class="hdr"><div class="hrow"><a class="iconbtn" href="#/admin" aria-label="Back">' + IC.back + '</a><div style="display:flex;flex-direction:column"><h1 class="htitle">Edit &amp; delete log</h1><span class="hsub">Every enquiry edit and Admin delete, with reason · newest first · kept 180 days</span></div></div></div>' +
+    '<form class="card" id="auf" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">' +
+      '<div class="field" style="flex:1;min-width:140px"><label for="au-s">Store code</label><input class="in" id="au-s" value="' + esc(store) + '" autocapitalize="characters" style="text-transform:uppercase" placeholder="All"></div>' +
+      '<div class="field" style="flex:1;min-width:160px"><label for="au-a">Action</label><select class="in" id="au-a"><option value="">Edits and deletes</option><option value="EDIT"' + (action === 'EDIT' ? ' selected' : '') + '>Edits</option><option value="DELETE"' + (action === 'DELETE' ? ' selected' : '') + '>Deletes</option></select></div>' +
+      '<button class="btn btn-d" type="submit">Apply</button><a class="btn btn-o" href="#/audit">Clear</a><button class="btn btn-o" type="button" id="au-x">' + IC.dl + ' CSV</button></form>' +
+    '<div class="card"><div class="ovx"><table class="tbl"><thead><tr><th>Time</th><th>Action</th><th>Enquiry</th><th>Store</th><th>By</th><th>Reason</th><th>What changed</th></tr></thead><tbody>' +
+    (rows.length ? rows.map(r => '<tr' + (r.action === 'DELETE' ? ' class="bad"' : '') + '><td>' + esc(String(r.at).slice(5, 16)) + '</td><td>' + (r.action === 'DELETE' ? '<span class="pill p-lost">Deleted</span>' : '<span class="pill p-fu">Edited</span>') + '</td><td>' +
+      (r.action === 'DELETE' ? esc(r.enq) : '<a href="#/enq/' + encodeURIComponent(r.enq) + '">' + esc(r.enq) + '</a>') + '</td><td>' + esc(r.store || '') + '</td><td>' + esc(r.code) + '<br><span class="tag">' + esc(nameOf(r.code)) + '</span></td><td style="white-space:normal;min-width:160px">' + esc(r.reason || '') + '</td><td style="white-space:normal;min-width:240px;font-size:12px">' + what(r) + '</td></tr>').join('')
+      : '<tr><td colspan="7" class="mu" style="text-align:center;padding:24px">No edits or deletes yet</td></tr>') + '</tbody></table></div></div></div>';
+  $('#auf').onsubmit = e => { e.preventDefault(); const p = new URLSearchParams(); const sc = $('#au-s').value.trim().toUpperCase(); if (sc) p.set('store', sc); if ($('#au-a').value) p.set('action', $('#au-a').value); location.hash = '#/audit' + (p.toString() ? '?' + p : ''); };
+  $('#au-x').onclick = () => {
+    const ce = v => { v = String(v === undefined || v === null ? '' : v); if (/^[=+\-@]/.test(v)) v = "'" + v; return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    const strip = h => String(h).replace(/<br>/g, ' | ').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    downloadCsv(['Time,Action,Enquiry,Store,By,Reason,Detail'].concat(rows.map(r => [r.at, r.action, r.enq, r.store, r.code, r.reason, strip(what(r))].map(ce).join(','))).join('\n'), 'edit_delete_log_' + todayLocal() + '.csv');
+  };
+}
+
 async function pinBanner() {
   try {
     if (!S.boot || S.boot.user.role !== 'ADMIN') return;
@@ -2078,17 +2432,84 @@ async function pinBanner() {
   } catch (e) { }
 }
 
+/* =================== v8: table filters + snapshot camera =================== */
+function enhance() {
+  // filter box above every table with 3+ rows (searches all rows, including hidden "show all" ones)
+  $$('table.tbl').forEach(t => {
+    if (t.dataset.f) return; t.dataset.f = '1';
+    const rows = $$('tbody tr', t); if (rows.length < 3) return;
+    const host = t.closest('.ovx') || t, inp = document.createElement('input');
+    inp.className = 'in tfilter'; inp.type = 'search'; inp.placeholder = 'Filter these ' + rows.length + ' rows…'; inp.setAttribute('aria-label', 'Filter rows');
+    host.parentNode.insertBefore(inp, host);
+    inp.oninput = () => { const q = inp.value.trim().toLowerCase(); rows.forEach(r => { r.style.display = !q ? '' : r.textContent.toLowerCase().indexOf(q) >= 0 ? 'table-row' : 'none'; }); };
+  });
+  // camera on dashboard panels / tables (Admin decides who gets it)
+  const u = S.boot && S.boot.user, sr = (SVC.settings && SVC.settings.snapRoles) || 'ADMIN';
+  if (!u || !(u.role === 'ADMIN' || sr === 'ALL' || (sr === 'ADMIN_HO' && u.role === 'HO'))) return;
+  $$('.panel, .kgrid, .act, #root .card').forEach(el => {
+    if (el.dataset.snap || el.tagName === 'FORM' || el.closest('.sheet') || !(el.querySelector('h3, table') || el.classList.contains('kgrid'))) return;
+    if (el.parentElement && el.parentElement.closest('.panel, .card, .act')) return;
+    el.dataset.snap = '1'; el.classList.add('snaphost');
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'snapbtn'; b.title = 'Snapshot – copy as image'; b.setAttribute('aria-label', 'Snapshot of this table'); b.innerHTML = IC.cam;
+    b.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); snapEl(el, b); };
+    if (el.classList.contains('kgrid')) { b.style.top = '-12px'; b.style.right = '-6px'; }
+    el.appendChild(b);
+  });
+}
+const SNAP_MAX = 64 * 1024;
+async function snapBlob(el) {
+  if (!window.html2canvas) await loadScript('vendor/html2canvas.min.js');
+  if (!window.pako) await loadScript('vendor/pako_deflate.min.js');
+  if (!window.UPNG) await loadScript('vendor/UPNG.js');
+  const bg = getComputedStyle(el).backgroundColor, clear = !bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent';
+  const shot = await html2canvas(el, { scale: 2, backgroundColor: clear ? '#FBF6EE' : null, logging: false, useCORS: true,
+    ignoreElements: n => !!(n.classList && (n.classList.contains('snapbtn') || n.classList.contains('tfilter'))) });
+  // stamp: app, who, when (IST)
+  const fh = 44, c = document.createElement('canvas'); c.width = shot.width; c.height = shot.height + fh;
+  const x = c.getContext('2d'); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, c.width, c.height); x.drawImage(shot, 0, 0);
+  x.fillStyle = '#5A0D24'; x.font = '600 22px Manrope, Arial, sans-serif'; x.textBaseline = 'middle';
+  const u = S.boot ? S.boot.user : {}, t = istNowIso().replace('T', ' ').slice(0, 16);
+  x.fillText('Vishal Mega Mart · Diwali Gifting · ' + (u.name || '') + ' · ' + t + ' IST', 16, shot.height + fh / 2);
+  // shrink until the PNG fits in 64 KB (fewer colours first, then smaller)
+  let last = null;
+  for (const k of [1, 0.85, 0.72, 0.6, 0.5, 0.42, 0.35]) {
+    const w = Math.max(1, Math.round(c.width * k)), h = Math.max(1, Math.round(c.height * k));
+    const t2 = document.createElement('canvas'); t2.width = w; t2.height = h;
+    const y = t2.getContext('2d'); y.imageSmoothingEnabled = true; y.imageSmoothingQuality = 'high'; y.drawImage(c, 0, 0, w, h);
+    const px = y.getImageData(0, 0, w, h).data.buffer;
+    for (const cn of [256, 96, 48]) { last = UPNG.encode([px], w, h, cn); if (last.byteLength <= SNAP_MAX) return { blob: new Blob([last], { type: 'image/png' }), w, h }; }
+  }
+  return { blob: new Blob([last], { type: 'image/png' }), over: true };
+}
+function snapEl(el, btn) {
+  btn.disabled = true;
+  const job = snapBlob(el);
+  let copied = Promise.resolve(false);
+  try {   // must start inside the tap (Safari / Chrome)
+    if (navigator.clipboard && window.ClipboardItem && window.isSecureContext) copied = navigator.clipboard.write([new ClipboardItem({ 'image/png': job.then(r => r.blob) })]).then(() => true, () => false);
+  } catch (e) { copied = Promise.resolve(false); }
+  Promise.all([job, copied]).then(([r, ok]) => {
+    btn.disabled = false;
+    const url = URL.createObjectURL(r.blob), kb = Math.max(1, Math.round(r.blob.size / 1024)), name = 'vmm-diwali-' + todayLocal() + '-' + Date.now().toString(36).slice(-4) + '.png';
+    const file = window.File ? new File([r.blob], name, { type: 'image/png' }) : null, canSh = !!(file && navigator.canShare && navigator.canShare({ files: [file] }));
+    sheet('<b class="serif" style="font-size:20px">Snapshot ready</b><img class="snapprev" src="' + url + '" alt="Snapshot preview">' +
+      '<span class="' + (ok ? '' : 'mu') + '" style="font-size:13px;font-weight:700;' + (ok ? 'color:var(--green)' : '') + '">' + (ok ? '✓ Copied (' + kb + ' KB) – paste it in WhatsApp Web, mail or Excel.' : 'Copy is not supported in this browser – use Share or Download (' + kb + ' KB).') + (r.over ? ' Large table – picture is ' + kb + ' KB.' : '') + '</span>' +
+      (canSh ? '<button class="btn btn-g w100" id="snsh">' + IC.wa + 'Share (WhatsApp, mail…)</button>' : '') + '<a class="btn btn-o w100" id="sndl" href="' + url + '" download="' + name + '">' + IC.dl + 'Download PNG</a><button class="btn btn-o w100" data-close>Close</button>');
+    if ($('#snsh')) $('#snsh').onclick = () => navigator.share({ files: [file] }).catch(() => { });
+  }).catch(e => { btn.disabled = false; toast('Snapshot failed – ' + (e && e.message ? e.message : 'try again'), true); });
+}
+
 /* =================== boot =================== */
 (function init() {
   const sv = ls.get('dge_sess', null);
   const maxAge = 30 * 86400000;   // hard cap; Admin minutes are checked once settings load
   if (sv && sv.code && Date.now() - sv.at < maxAge) { SVC.sess = sv; S.token = sv.code; } else ls.del('dge_sess');
   ['pointerdown', 'keydown', 'touchstart', 'input', 'scroll'].forEach(ev => document.addEventListener(ev, markAct, { passive: true, capture: true }));
-  const chk = () => { if (S.token && SVC.sess) { const w = sessionEnded(); if (w) endSession(w); } };
-  setInterval(chk, 30000);
+  const chk = () => { if (S.token && SVC.sess) { const w = sessionEnded(); if (w) { const x = $('#nsw'); if (x) x.remove(); endSession(w); } else noSaveWarn(); } };
+  setInterval(chk, 10000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) chk(); });
-  if (!location.hash || location.hash === '#/') location.hash = S.token ? '#/home' : '#/login';
-  route();
+  if (!location.hash || location.hash === '#/') location.hash = S.token ? '#/home' : '#/login';   // hashchange renders it
+  else route();
 })();
 </script>
 </body>
