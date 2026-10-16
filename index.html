@@ -1376,7 +1376,7 @@ function route() {
   const v = { login: vLogin, home: vHome, new: vNew, list: vList, enq: vEnq, esc: vEsc, dash: vDash, admin: vAdmin, pin: vPin, pins: vPins, logins: vLogins,
     edit: vEdit, wa: vWa, sessions: vSessions, audit: vAudit }[parts[0]];
   if (!v) { location.hash = S.token ? (isMgr() ? '#/dash' : '#/home') : '#/login'; return; }
-  Promise.resolve(v(parts[1] ? decodeURIComponent(parts[1]) : '', q)).then(() => { enhance(); if (parts[0] === 'dash') pinBanner(); }).catch(e => { if (e.code !== 'AUTH') { root.innerHTML = '<div class="app"><div class="empty">' + esc(e.message) + '<br><br><a href="#/home">Go home</a></div></div>'; } });
+  Promise.resolve(v(parts[1] ? decodeURIComponent(parts[1]) : '', q)).then(() => { enhance(); if (parts[0] === 'dash') pinBanner(); hoFront(parts[0]); }).catch(e => { if (e.code !== 'AUTH') { root.innerHTML = '<div class="app"><div class="empty">' + esc(e.message) + '<br><br><a href="#/home">Go home</a></div></div>'; } });
 }
 window.addEventListener('hashchange', route);
 function loading(wide) { root.innerHTML = '<div class="app' + (wide ? ' wide' : '') + '"><div class="spin"></div></div>'; }
@@ -1758,6 +1758,22 @@ function saveVcf(fname, cards) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([cards.join('\r\n') + '\r\n'], { type: 'text/vcard' }));
   a.download = fname.replace(/[^\w\- ]/g, '') + '.vcf'; document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 5000);
+}
+/* v9.7: HO contacts on the FRONT page after login – card always, and a one-time forced save popup per device */
+const hoKey = () => 'vmm_hoc_' + (SVC.sess ? SVC.sess.code : '') + '_' + (S.boot.escalation || []).length;
+function hoDone() { try { return localStorage.getItem(hoKey()) === '1'; } catch (x) { return false; } }
+function hoMark() { try { localStorage.setItem(hoKey(), '1'); } catch (x) { } }
+function hoFront(page) {
+  if ((page !== 'dash' && page !== 'home') || !S.boot || !(S.boot.escalation || []).length || $('#hocard')) return;
+  const n = S.boot.escalation.length, anchor = root.querySelector('.dtop, .hdr');
+  if (anchor) anchor.insertAdjacentHTML('afterend', '<div class="card" id="hocard" style="margin:12px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><div class="stack" style="gap:2px"><h3>HO category contacts</h3><span class="mu" style="font-size:12px">Buyers &amp; SAP for Escalate · save to phone</span></div><button class="btn btn-d sm" id="hocbtn">' + IC.dl + 'Save ' + n + ' contacts</button></div>');
+  if ($('#hocbtn')) $('#hocbtn').onclick = () => { hoContactsVcf(); hoMark(); };
+  if (hoDone()) return;
+  sheet('<b class="serif" style="font-size:20px">Save HO contacts to your phone</b>' +
+    '<span class="mu" style="font-size:14px;line-height:1.5">One-time step. Buyers and SAP contacts are needed for Escalate and the WhatsApp share list. Tap Save, open the downloaded file, then tap Import / Save.</span>' +
+    '<button class="btn btn-d w100" id="hoforce">' + IC.dl + 'Save ' + n + ' contacts now</button>');
+  const o = $('#ovl'); if (o) o.onclick = null;   // cannot be closed by tapping outside
+  $('#hoforce').onclick = () => { hoContactsVcf(); hoMark(); closeSheet(); if ($('#hocbtn')) $('#hocbtn').textContent = 'Saved'; };
 }
 function hoContactsVcf() {
   const seen = {}, cards = [];
