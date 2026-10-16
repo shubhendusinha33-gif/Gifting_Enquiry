@@ -1866,7 +1866,7 @@ async function vList(_, q) {
   L.store = q.get('store') || ''; L.am = q.get('am') || ''; const wide = isMgr() && S.boot.user.role !== 'AM' && !L.store && !L.am; L.view = q.get('view') || (wide ? 'hot' : 'open'); if (wide && ['hot', 'overdue', 'due', 'escalated'].indexOf(L.view) < 0) L.view = 'hot'; L.q = q.get('q') || ''; L.page = 1; L.rows = [];
   const mgr = isMgr();
   const views = wide ? [['hot', 'Hot leads'], ['overdue', 'Overdue'], ['due', 'Due today'], ['escalated', 'Escalated']] : [['due', 'Due'], ['hot', 'Hot'], ['open', 'Open'], ['escalated', 'Escalated'], ['all', 'All'], ['converted', 'Converted'], ['lost', 'Lost']];
-  root.innerHTML = '<div class="app' + (mgr ? '' : '') + '">' +
+  root.innerHTML = '<div class="app' + (wide ? ' wide" style="max-width:1100px"' : '"') + '>' +
     '<div class="hdr"><div class="hrow"><a class="iconbtn" href="' + (mgr ? '#/dash' : '#/home') + '" aria-label="Back">' + IC.back + '</a><div style="display:flex;flex-direction:column;min-width:0"><h1 class="htitle">' + (L.view === 'due' ? 'Follow-ups' : 'Enquiries') + '</h1><span class="hsub" id="lsub">' + esc(L.store ? 'Store ' + L.store : L.am ? 'AM ' + L.am : (mgr ? S.boot.user.storeCount + ' stores' : S.boot.user.storeCode)) + '</span></div>' +
     '<button class="iconbtn" id="exp" style="margin-left:auto" aria-label="Download CSV">' + IC.dl + '</button></div>' +
     '<input class="in" id="lq" type="search" placeholder="' + (wide ? 'Enquiry ID, 10-digit mobile or store code…' : 'Search name, mobile, enquiry ID, company…') + '" style="margin-top:14px;height:44px;background:rgba(255,255,255,.95)" value="' + esc(L.q) + '" aria-label="Search enquiries"></div>' +
