@@ -1782,10 +1782,12 @@ async function hoSaveAll(fromCard) {
   (S.boot.escalation || []).forEach(c => { const d = waNum(c.phone); if (d.length < 10 || seen[d]) return; seen[d] = 1; cards.push(vcard('VMM ' + (c.group === 'SAP' ? 'SAP' : c.groupName || c.group) + ' ' + c.level + ' - ' + c.name, c.phone, 'Vishal Mega Mart HO', c.role)); });
   if (!cards.length) return toast('No HO contacts loaded', true);
   const f = new File([cards.join('\r\n') + '\r\n'], 'VMM HO Contacts.vcf', { type: 'text/vcard' });
+  let shared = false;
   if (isMob() && navigator.canShare && navigator.canShare({ files: [f] })) {
-    try { await navigator.share({ files: [f], title: 'VMM HO contacts' }); }
-    catch (x) { if (x && x.name === 'AbortError') return false; toast('Could not open the share list – try again', true); return false; }
-  } else {
+    try { await navigator.share({ files: [f] }); shared = true; }
+    catch (x) { if (x && x.name === 'AbortError') return false; }   /* cancelled by user → stop; any other error → download fallback */
+  }
+  if (!shared) {
     const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 5000);
     toast(cards.length + ' contacts downloaded – open the file and tap Save / Import', false);
