@@ -1709,14 +1709,18 @@ function copyPhotoNow(src) {
     return navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]).then(() => true, () => false);
   } catch (x) { return Promise.resolve(false); }
 }
-/* v9.2: opens the contact's chat directly (phone: WhatsApp app · PC: WhatsApp Web) with the message typed in.
-   PC also copies the product photo → Ctrl+V in the chat. */
-function waSend(num, text, imgs) {
+/* v9.3: photo + message go together as ONE WhatsApp message via the share list (phone and Windows PC – as in v8).
+   Only when the device cannot share files: open the contact's chat directly with the message (PC also copies the photo → Ctrl+V). */
+async function waSend(num, text, imgs) {
+  if (imgs.length && canFileShare()) {
+    const files = [];
+    for (const p of imgs.slice(0, 10)) { const bl = await photoBlob(p.src); if (bl) files.push(new File([bl], p.id + '.jpg', { type: 'image/jpeg' })); }
+    if (files.length) { try { await navigator.share({ files, text }); return true; } catch (x) { if (x && x.name === 'AbortError') return false; } }
+  }
   const t = encodeURIComponent(text);
   if (isMob()) { location.href = 'whatsapp://send?phone=' + num + '&text=' + t; return true; }
-  const cp = imgs.length ? copyPhotoNow(imgs[0].src) : null;
   window.open('https://web.whatsapp.com/send?phone=' + num + '&text=' + t, 'vmm_wa');
-  if (cp) cp.then(ok => toast(ok ? 'Photo copied – press Ctrl+V in the WhatsApp chat' : 'Could not copy the photo on this PC', !ok));
+  if (imgs.length) toast('This browser cannot attach the photo – attach it in the chat', true);
   return true;
 }
 /* phone: product photos via the share sheet (the customer chat you just opened is at the top) */
@@ -1739,9 +1743,8 @@ function custMsg(e, lines) {
     '\n\nTo confirm your order, a small advance payment is kindly requested. Please reply here or visit the store at your convenience – we will be happy to assist you.' +
     '\nRef: ' + e.id + (staff ? '\n– ' + staff + ', Vishal Mega Mart ' + e.storeName : '');
 }
-function sendCust(e, pics, text) {
-  waSend(waNum(e.mobileFull), text, pics);
-  api('waSent', { id: e.id }).catch(() => { });
+async function sendCust(e, pics, text) {
+  if (await waSend(waNum(e.mobileFull), text, pics)) api('waSent', { id: e.id }).catch(() => { });
 }
 function pageImg(p) { return p ? 'catalogue/p' + String(p).padStart(2, '0') + '.jpg' : ''; }
 function renderResults() {
@@ -1929,7 +1932,7 @@ async function vEnq(id) {
     '<div style="display:flex;gap:14px;align-items:center;margin-top:16px"><div class="av g" style="width:54px;height:54px;border-radius:16px;font-size:18px">' + esc(initials(e.customer)) + '</div>' +
     '<div style="display:flex;flex-direction:column;min-width:0"><span class="htitle" style="font-size:24px">' + esc(e.customer) + '</span><span class="hsub">' + esc(e.type + (e.company ? ' · ' + e.company : '') + ' · ' + e.mobileFull) + '</span></div></div></div>' +
     '<div class="card float k3"><div class="kv"><b class="mm">' + inr(e.value) + '</b><span>Est. value</span></div><div class="kv"><b class="' + (dleft !== null && dleft <= 2 ? 'a' : '') + '">' + (dleft === null ? '—' : dleft <= 0 ? 'Today' : dleft + ' day' + (dleft > 1 ? 's' : '')) + '</b><span>To purchase</span></div><div class="kv"><b>' + e.followups + '</b><span>Follow-ups</span></div></div>' +
-    '<div style="padding:14px 16px 0" class="' + (canPhotoShare(r.lines) ? 'g3' : 'g2') + '"><a class="btn btn-ob sm" href="tel:' + esc(e.mobileFull) + '">' + IC.phone + 'Call</a><button class="btn btn-og sm" id="qwa">' + IC.wa + 'WhatsApp</button>' + (canPhotoShare(r.lines) ? '<button class="btn btn-o sm" id="qph">' + IC.cam + 'Photo</button>' : '') + '</div>' +
+    '<div style="padding:14px 16px 0" class="g2"><a class="btn btn-ob sm" href="tel:' + esc(e.mobileFull) + '">' + IC.phone + 'Call</a><button class="btn btn-og sm" id="qwa">' + IC.wa + 'WhatsApp</button>' + '</div>' +
     (r.canEdit ? '<div style="padding:10px 16px 0"><a class="btn btn-o sm w100" href="#/edit/' + encodeURIComponent(e.id) + '">' + IC.edit + 'Edit customer / products (reason needed)</a></div>' : '') +
     (open ? '<div style="padding:10px 16px 0"><a class="btn btn-oa sm w100" href="#/esc/' + encodeURIComponent(e.id) + '">' + IC.up + 'Need help? Escalate to buyer (price / stock / GST)</a></div>' : '') +
     (e.esc === 'Open' ? '<div class="banner ' + (escH >= l2 ? 'red' : 'warn') + '" style="margin:12px 16px 0;flex-direction:column;align-items:stretch;gap:8px"><span>' + IC.up + ' Escalated to <b>' + esc(e.lastEscTo) + '</b> · ' + (escH < 1 ? 'just now' : Math.floor(escH) + 'h ago') + '.' + (escH >= l2 ? ' No response yet – escalate to next level.' : '') + '</span>' +
@@ -1950,7 +1953,6 @@ async function vEnq(id) {
     (r.canDelete ? '<div style="padding:22px 16px 0"><button class="btn btn-o w100" id="delenq" style="color:var(--red);border-color:#EBC3C3">' + IC.trash + 'Delete enquiry (Admin)</button></div>' : '') +
     '</div>';
   if ($('#qwa')) $('#qwa').onclick = () => sendCust(e, custPics(r.lines), custMsg(e, r.lines));
-  if ($('#qph')) $('#qph').onclick = () => sharePhotos(custPics(r.lines));
   if ($('#resolve')) $('#resolve').onclick = () => {
     sheet('<b class="serif" style="font-size:20px">Buyer responded</b><div class="field"><label for="rn">What did the buyer say?</label><textarea class="in" id="rn" maxlength="300" placeholder="e.g. 5% approved, stock from DC on 18 Oct"></textarea></div><button class="btn btn-d w100" id="rs">Save</button>');
     $('#rs').onclick = async () => { try { await api('resolveEscalation', { id: e.id, note: $('#rn').value }); closeSheet(); toast('Escalation closed'); route(); } catch (x) { toast(x.message, true); } };
