@@ -1701,24 +1701,31 @@ function prodImg(x) { const id = x && (x.productId || (/^P\d{3,}$/.test(x.id || 
 function waNum(mob) { const d = String(mob || '').replace(/\D/g, ''); return d.length === 10 ? '91' + d : d; }
 function canFileShare() { try { return !!(navigator.canShare && navigator.canShare({ files: [new File(['x'], 'x.jpg', { type: 'image/jpeg' })] })); } catch (x) { return false; } }
 async function photoBlob(src) { try { const res = await fetch(src); return res.ok ? await res.blob() : null; } catch (x) { return null; } }
-async function copyPhoto(src) {
+function isMob() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); }
+/* PC: copy photo to clipboard inside the click (ClipboardItem with a promise) so the tab still has focus */
+function copyPhotoNow(src) {
   try {
-    const bl = await photoBlob(src); if (!bl) return false;
-    const bmp = await createImageBitmap(bl), c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height; c.getContext('2d').drawImage(bmp, 0, 0);
-    const png = await new Promise(res => c.toBlob(res, 'image/png'));
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]); return true;
-  } catch (x) { return false; }
+    const png = photoBlob(src).then(bl => createImageBitmap(bl)).then(bmp => new Promise(res => { const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height; c.getContext('2d').drawImage(bmp, 0, 0); c.toBlob(res, 'image/png'); }));
+    return navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]).then(() => true, () => false);
+  } catch (x) { return Promise.resolve(false); }
 }
-/* imgs: [{src,id}] -> returns false only if the user cancelled the share sheet */
-async function waSend(num, text, imgs) {
-  if (imgs.length && canFileShare()) {
-    const files = [];
-    for (const p of imgs.slice(0, 10)) { const bl = await photoBlob(p.src); if (bl) files.push(new File([bl], p.id + '.jpg', { type: 'image/jpeg' })); }
-    if (files.length) { try { await navigator.share({ files, text }); return true; } catch (x) { if (x && x.name === 'AbortError') return false; } }
-  }
-  window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(text), '_blank', 'noopener');
-  if (imgs.length) { const ok = await copyPhoto(imgs[0].src); toast(ok ? 'Photo copied – press Ctrl+V in the WhatsApp chat' : 'Could not copy the photo on this device', !ok); }
+/* v9.2: opens the contact's chat directly (phone: WhatsApp app · PC: WhatsApp Web) with the message typed in.
+   PC also copies the product photo → Ctrl+V in the chat. */
+function waSend(num, text, imgs) {
+  const t = encodeURIComponent(text);
+  if (isMob()) { location.href = 'whatsapp://send?phone=' + num + '&text=' + t; return true; }
+  const cp = imgs.length ? copyPhotoNow(imgs[0].src) : null;
+  window.open('https://web.whatsapp.com/send?phone=' + num + '&text=' + t, 'vmm_wa');
+  if (cp) cp.then(ok => toast(ok ? 'Photo copied – press Ctrl+V in the WhatsApp chat' : 'Could not copy the photo on this PC', !ok));
   return true;
+}
+/* phone: product photos via the share sheet (the customer chat you just opened is at the top) */
+function canPhotoShare(lines) { return isMob() && canFileShare() && custPics(lines).length > 0; }
+async function sharePhotos(pics) {
+  const files = [];
+  for (const p of pics.slice(0, 10)) { const bl = await photoBlob(p.src); if (bl) files.push(new File([bl], p.id + '.jpg', { type: 'image/jpeg' })); }
+  if (!files.length) return toast('Photo not available', true);
+  try { await navigator.share({ files }); } catch (x) { if (!(x && x.name === 'AbortError')) toast('Could not share the photo', true); }
 }
 /* customer message: no links, soft advance-payment note */
 function custPics(lines) { return lines.filter(l => l.page || l.productId).map(l => ({ src: prodImg(l), name: l.name, id: l.productId || 'catalogue-p' + l.page })); }
@@ -1732,9 +1739,9 @@ function custMsg(e, lines) {
     '\n\nTo confirm your order, a small advance payment is kindly requested. Please reply here or visit the store at your convenience – we will be happy to assist you.' +
     '\nRef: ' + e.id + (staff ? '\n– ' + staff + ', Vishal Mega Mart ' + e.storeName : '');
 }
-async function sendCust(e, pics, text) {
-  const sent = await waSend(waNum(e.mobileFull), text, pics);
-  if (sent) api('waSent', { id: e.id }).catch(() => { });
+function sendCust(e, pics, text) {
+  waSend(waNum(e.mobileFull), text, pics);
+  api('waSent', { id: e.id }).catch(() => { });
 }
 function pageImg(p) { return p ? 'catalogue/p' + String(p).padStart(2, '0') + '.jpg' : ''; }
 function renderResults() {
@@ -1922,7 +1929,7 @@ async function vEnq(id) {
     '<div style="display:flex;gap:14px;align-items:center;margin-top:16px"><div class="av g" style="width:54px;height:54px;border-radius:16px;font-size:18px">' + esc(initials(e.customer)) + '</div>' +
     '<div style="display:flex;flex-direction:column;min-width:0"><span class="htitle" style="font-size:24px">' + esc(e.customer) + '</span><span class="hsub">' + esc(e.type + (e.company ? ' · ' + e.company : '') + ' · ' + e.mobileFull) + '</span></div></div></div>' +
     '<div class="card float k3"><div class="kv"><b class="mm">' + inr(e.value) + '</b><span>Est. value</span></div><div class="kv"><b class="' + (dleft !== null && dleft <= 2 ? 'a' : '') + '">' + (dleft === null ? '—' : dleft <= 0 ? 'Today' : dleft + ' day' + (dleft > 1 ? 's' : '')) + '</b><span>To purchase</span></div><div class="kv"><b>' + e.followups + '</b><span>Follow-ups</span></div></div>' +
-    '<div style="padding:14px 16px 0" class="g2"><a class="btn btn-ob sm" href="tel:' + esc(e.mobileFull) + '">' + IC.phone + 'Call</a><button class="btn btn-og sm" id="qwa">' + IC.wa + 'WhatsApp</button></div>' +
+    '<div style="padding:14px 16px 0" class="' + (canPhotoShare(r.lines) ? 'g3' : 'g2') + '"><a class="btn btn-ob sm" href="tel:' + esc(e.mobileFull) + '">' + IC.phone + 'Call</a><button class="btn btn-og sm" id="qwa">' + IC.wa + 'WhatsApp</button>' + (canPhotoShare(r.lines) ? '<button class="btn btn-o sm" id="qph">' + IC.cam + 'Photo</button>' : '') + '</div>' +
     (r.canEdit ? '<div style="padding:10px 16px 0"><a class="btn btn-o sm w100" href="#/edit/' + encodeURIComponent(e.id) + '">' + IC.edit + 'Edit customer / products (reason needed)</a></div>' : '') +
     (open ? '<div style="padding:10px 16px 0"><a class="btn btn-oa sm w100" href="#/esc/' + encodeURIComponent(e.id) + '">' + IC.up + 'Need help? Escalate to buyer (price / stock / GST)</a></div>' : '') +
     (e.esc === 'Open' ? '<div class="banner ' + (escH >= l2 ? 'red' : 'warn') + '" style="margin:12px 16px 0;flex-direction:column;align-items:stretch;gap:8px"><span>' + IC.up + ' Escalated to <b>' + esc(e.lastEscTo) + '</b> · ' + (escH < 1 ? 'just now' : Math.floor(escH) + 'h ago') + '.' + (escH >= l2 ? ' No response yet – escalate to next level.' : '') + '</span>' +
@@ -1943,6 +1950,7 @@ async function vEnq(id) {
     (r.canDelete ? '<div style="padding:22px 16px 0"><button class="btn btn-o w100" id="delenq" style="color:var(--red);border-color:#EBC3C3">' + IC.trash + 'Delete enquiry (Admin)</button></div>' : '') +
     '</div>';
   if ($('#qwa')) $('#qwa').onclick = () => sendCust(e, custPics(r.lines), custMsg(e, r.lines));
+  if ($('#qph')) $('#qph').onclick = () => sharePhotos(custPics(r.lines));
   if ($('#resolve')) $('#resolve').onclick = () => {
     sheet('<b class="serif" style="font-size:20px">Buyer responded</b><div class="field"><label for="rn">What did the buyer say?</label><textarea class="in" id="rn" maxlength="300" placeholder="e.g. 5% approved, stock from DC on 18 Oct"></textarea></div><button class="btn btn-d w100" id="rs">Save</button>');
     $('#rs').onclick = async () => { try { await api('resolveEscalation', { id: e.id, note: $('#rn').value }); closeSheet(); toast('Escalation closed'); route(); } catch (x) { toast(x.message, true); } };
@@ -2028,15 +2036,13 @@ async function vEsc(id, q) {
       '<div class="stack" style="padding:0 16px;gap:8px">' + (cs.length ? cs.map(c => card(c, false)).join('') : '<div class="empty" style="padding:6px">No buyer mapped for this category – contact your AM.</div>') + sap.map(c => card(c, true)).join('') + '</div>' +
       '<div class="sec"><span class="sec-h">Ready WhatsApp</span><small style="font-weight:800;letter-spacing:.5px">EDITABLE · ' + (img ? 'PHOTO ATTACHED' : 'NO PHOTO') + '</small></div>' +
       '<div class="wa-wrap"><div class="wa-b">' + (img ? '<img src="' + prodImg(first) + '" alt="' + esc(first.name) + '">' : '') + '<textarea id="wamsg" aria-label="Message">' + esc(msg) + '</textarea></div></div>' +
-      '<div class="foot" style="flex-direction:column;align-items:stretch;gap:6px"><button class="btn btn-g w100" id="send">' + IC.wa + 'Send to ' + esc((sel.name || '').split(' ')[0]) + ' on WhatsApp</button>' +
-      '<span style="font-size:12px;color:var(--muted);text-align:center">Logged in the enquiry journey · HO sees open escalations</span></div></div>';
+      '</div>';
     $$('[data-g]').forEach(x => x.onclick = () => { st.grp = x.dataset.g; st.sel = null; draw(); });
     $$('[data-n]').forEach(x => x.onclick = () => { const n = x.dataset.n; const i = st.needs.indexOf(n); if (i >= 0) st.needs.splice(i, 1); else st.needs.push(n); draw(); });
     $('#edisc').oninput = ev => { st.disc = ev.target.value.replace(/[^\d.]/g, '').slice(0, 5); $('#wamsg').value = escMsg(r.lines.filter(l => l.grp === st.grp)); };
     $$('[data-sel]').forEach(x => x.onclick = ev => { if (ev.target.closest('a,button')) return; st.sel = x.dataset.sel; draw(); });
     $$('[data-call]').forEach(a => a.onclick = () => { logEsc(e, st, a.dataset.call, 'Call'); });
     $$('[data-wa]').forEach(b => b.onclick = () => { st.sel = b.dataset.wa; sendWa(e, st, false); });
-    $('#send').onclick = () => sendWa(e, st, true);
   };
   /* v8: no links in the message; customer's discount ask goes in */
   function escMsg(lines) {
@@ -2061,7 +2067,7 @@ async function vEsc(id, q) {
     const first = r.lines.filter(l => l.grp === s.grp)[0];
     logEsc(en, s, c.name, 'WhatsApp');
     const imgs = first && (first.page || first.productId) ? [{ src: prodImg(first), id: first.productId || 'catalogue-p' + first.page }] : [];
-    await waSend(waNum(c.phone), text, imgs);
+    waSend(waNum(c.phone), text, imgs);
   }
   draw();
 }
@@ -2079,8 +2085,7 @@ async function vWa(id) {
       '<div class="pinfo"><b>' + esc(l.name) + '</b><span>Qty ' + l.qty + (l.unitPrice ? ' × ' + inr(l.unitPrice) : '') + '</span></div><b style="color:var(--m);white-space:nowrap">' + inr(l.value) + '</b></div>').join('') + '</div>' +
     '<div class="sec"><span class="sec-h">Ready WhatsApp</span><small style="font-weight:800;letter-spacing:.5px">EDITABLE · NO LINKS</small></div>' +
     '<div class="wa-wrap"><div class="wa-b">' + (pics[0] ? '<img src="' + pics[0].src + '" alt="' + esc(pics[0].name) + '">' : '') + '<textarea id="wamsg" aria-label="Message">' + esc(msg) + '</textarea></div></div>' +
-    '<div class="wrap" style="padding-top:14px;padding-bottom:30px"><button class="btn btn-g w100" id="wsend">' + IC.wa + 'Send to ' + esc(e.customer.split(' ')[0]) + ' on WhatsApp</button></div></div>';
-  $('#wsend').onclick = () => sendCust(e, pics, $('#wamsg').value);
+    '</div>';
 }
 
 /* =================== MANAGER DASHBOARD =================== */
