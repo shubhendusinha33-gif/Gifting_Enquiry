@@ -1767,20 +1767,32 @@ function hoFront(page) {
   if ((page !== 'dash' && page !== 'home') || !S.boot || !(S.boot.escalation || []).length || $('#hocard')) return;
   const n = S.boot.escalation.length, anchor = root.querySelector('.dtop, .hdr');
   if (anchor) anchor.insertAdjacentHTML('afterend', '<div class="card" id="hocard" style="margin:12px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><div class="stack" style="gap:2px"><h3>HO category contacts</h3><span class="mu" style="font-size:12px">Buyers &amp; SAP for Escalate · save to phone</span></div><button class="btn btn-d sm" id="hocbtn">' + IC.dl + 'Save ' + n + ' contacts</button></div>');
-  if ($('#hocbtn')) $('#hocbtn').onclick = () => { hoContactsVcf(); hoMark(); };
+  if ($('#hocbtn')) $('#hocbtn').onclick = () => hoSaveAll(true);
   if (hoDone()) return;
   sheet('<b class="serif" style="font-size:20px">Save HO contacts to your phone</b>' +
     '<span class="mu" style="font-size:14px;line-height:1.5">One-time step. Buyers and SAP contacts are needed for Escalate and the WhatsApp share list. Tap Save, open the downloaded file, then tap Import / Save.</span>' +
     '<button class="btn btn-d w100" id="hoforce">' + IC.dl + 'Save ' + n + ' contacts now</button>');
   const o = $('#ovl'); if (o) o.onclick = null;   // cannot be closed by tapping outside
-  $('#hoforce').onclick = () => { hoContactsVcf(); hoMark(); closeSheet(); if ($('#hocbtn')) $('#hocbtn').textContent = 'Saved'; };
+  $('#hoforce').onclick = () => hoSaveAll(false);
 }
-function hoContactsVcf() {
+/* v9.8: one .vcf with every HO contact. Phone → share sheet → "Contacts" saves them in one tap.
+   PC / no share support → downloads the file. Forced popup closes only after a successful save. */
+async function hoSaveAll(fromCard) {
   const seen = {}, cards = [];
   (S.boot.escalation || []).forEach(c => { const d = waNum(c.phone); if (d.length < 10 || seen[d]) return; seen[d] = 1; cards.push(vcard('VMM ' + (c.group === 'SAP' ? 'SAP' : c.groupName || c.group) + ' ' + c.level + ' - ' + c.name, c.phone, 'Vishal Mega Mart HO', c.role)); });
   if (!cards.length) return toast('No HO contacts loaded', true);
-  saveVcf('VMM HO category contacts', cards);
-  toast(cards.length + ' contacts downloaded – open the file and tap Import / Save', false);
+  const f = new File([cards.join('\r\n') + '\r\n'], 'VMM HO Contacts.vcf', { type: 'text/vcard' });
+  if (isMob() && navigator.canShare && navigator.canShare({ files: [f] })) {
+    try { await navigator.share({ files: [f], title: 'VMM HO contacts' }); }
+    catch (x) { if (x && x.name === 'AbortError') return false; toast('Could not open the share list – try again', true); return false; }
+  } else {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 5000);
+    toast(cards.length + ' contacts downloaded – open the file and tap Save / Import', false);
+  }
+  hoMark(); closeSheet(); const cb = $('#hocbtn'); if (cb) cb.textContent = 'Saved ✓';
+  if (!fromCard) toast(cards.length + ' contacts saved – they now appear in WhatsApp', false);
+  return true;
 }
 /* v9.6 customer: 1 · Text = full message straight into the customer chat (works for unsaved numbers)
    2 · Image = product photo(s): phone share list (the customer chat is now at the top) · PC copies photo → Ctrl+V */
@@ -2087,7 +2099,7 @@ async function vEsc(id, q) {
       '<div class="wa-wrap"><div class="wa-b">' + (img ? '<img src="' + prodImg(first) + '" alt="' + esc(first.name) + '">' : '') + '<textarea id="wamsg" aria-label="Message">' + esc(msg) + '</textarea></div></div>' +
       '</div>';
     $$('[data-g]').forEach(x => x.onclick = () => { st.grp = x.dataset.g; st.sel = null; draw(); });
-    $('#vcfall').onclick = hoContactsVcf;
+    $('#vcfall').onclick = () => hoSaveAll(true);
     $$('[data-n]').forEach(x => x.onclick = () => { const n = x.dataset.n; const i = st.needs.indexOf(n); if (i >= 0) st.needs.splice(i, 1); else st.needs.push(n); draw(); });
     $('#edisc').oninput = ev => { st.disc = ev.target.value.replace(/[^\d.]/g, '').slice(0, 5); $('#wamsg').value = escMsg(r.lines.filter(l => l.grp === st.grp)); };
     $$('[data-sel]').forEach(x => x.onclick = ev => { if (ev.target.closest('a,button')) return; st.sel = x.dataset.sel; draw(); });
