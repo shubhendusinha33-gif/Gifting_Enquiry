@@ -1772,7 +1772,7 @@ function hoFront(page) {
     '<span class="mu" style="font-size:11px;line-height:1.4">' + n + ' buyer &amp; SAP contacts. Phone: tap → share list → <b>Contacts</b> (saved to your phone contacts). PC: downloads “VMM HO Contacts.vcf” to your Downloads folder.</span></div>' +
     '<button class="btn btn-d sm w100" id="hocbtn" style="font-size:13px">' + IC.dl + 'Save ' + n + ' contacts to phone</button></div>');
   if ($('#hocbtn')) $('#hocbtn').onclick = () => hoSaveAll(true);
-  if (hoSavedFlag()) return;
+  if (hoDone()) return;
   const o0 = document.createElement('div'); o0.className = 'ovl'; o0.id = 'ovl';
   o0.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" style="gap:12px;max-width:440px">' +
     '<b class="serif" style="font-size:18px">Save HO contacts to your phone</b>' +
