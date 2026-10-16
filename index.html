@@ -1765,14 +1765,20 @@ function hoDone() { try { return localStorage.getItem(hoKey()) === '1'; } catch 
 function hoMark() { try { localStorage.setItem(hoKey(), '1'); } catch (x) { } }
 function hoFront(page) {
   if ((page !== 'dash' && page !== 'home') || !S.boot || !(S.boot.escalation || []).length || $('#hocard')) return;
-  const n = S.boot.escalation.length, anchor = root.querySelector('.dtop, .hdr');
-  if (anchor) anchor.insertAdjacentHTML('afterend', '<div class="card" id="hocard" style="margin:12px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><div class="stack" style="gap:2px"><h3>HO category contacts</h3><span class="mu" style="font-size:12px">Buyers &amp; SAP for Escalate · save to phone</span></div><button class="btn btn-d sm" id="hocbtn">' + IC.dl + 'Save ' + n + ' contacts</button></div>');
+  const n = S.boot.escalation.length, anchor = root.querySelector('.card.float') || root.querySelector('.dtop, .hdr');
+  /* v9.8.2: placed AFTER the floating KPI card (it overlaps the header) · compact text & sizes for phone */
+  if (anchor) anchor.insertAdjacentHTML('afterend', '<div class="card" id="hocard" style="margin:12px 16px;display:flex;flex-direction:column;gap:8px;padding:12px 14px;position:relative;z-index:1">' +
+    '<div style="display:flex;flex-direction:column;gap:2px"><b style="font-size:14px;color:var(--ink)">HO category contacts</b>' +
+    '<span class="mu" style="font-size:11px;line-height:1.4">' + n + ' buyer &amp; SAP contacts. Phone: tap → share list → <b>Contacts</b> (saved to your phone contacts). PC: downloads “VMM HO Contacts.vcf” to your Downloads folder.</span></div>' +
+    '<button class="btn btn-d sm w100" id="hocbtn" style="font-size:13px">' + IC.dl + 'Save ' + n + ' contacts to phone</button></div>');
   if ($('#hocbtn')) $('#hocbtn').onclick = () => hoSaveAll(true);
-  if (hoDone()) return;
-  sheet('<b class="serif" style="font-size:20px">Save HO contacts to your phone</b>' +
-    '<span class="mu" style="font-size:14px;line-height:1.5">One-time step. Buyers and SAP contacts are needed for Escalate and the WhatsApp share list. Tap Save, open the downloaded file, then tap Import / Save.</span>' +
-    '<button class="btn btn-d w100" id="hoforce">' + IC.dl + 'Save ' + n + ' contacts now</button>');
-  const o = $('#ovl'); if (o) o.onclick = null;   // cannot be closed by tapping outside
+  if (hoSavedFlag()) return;
+  const o0 = document.createElement('div'); o0.className = 'ovl'; o0.id = 'ovl';
+  o0.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" style="gap:12px;max-width:440px">' +
+    '<b class="serif" style="font-size:18px">Save HO contacts to your phone</b>' +
+    '<span class="mu" style="font-size:12px;line-height:1.5">One-time step. Tap the button → choose <b>Contacts</b> in the share list → all ' + n + ' contacts are saved. Needed for Escalate and WhatsApp.</span>' +
+    '<button class="btn btn-d w100" id="hoforce" style="font-size:14px">' + IC.dl + 'Save ' + n + ' contacts now</button></div>';
+  document.body.appendChild(o0);
   $('#hoforce').onclick = () => hoSaveAll(false);
 }
 /* v9.8: one .vcf with every HO contact. Phone → share sheet → "Contacts" saves them in one tap.
